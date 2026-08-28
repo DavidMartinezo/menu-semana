@@ -1,0 +1,30 @@
+# Blueprint de Render: define los 2 servicios (API + frontend) para desplegar juntos.
+# En el dashboard de Render: New > Blueprint > conecta este repo > Apply.
+# Las variables marcadas "sync: false" las pide Render al momento de crear los servicios
+# (no van en este archivo, así que nunca quedan en el repo).
+services:
+  - name: menu-semana-api
+    type: web
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MODEL
+        value: openai/gpt-oss-20b
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+
+  - name: menu-semana-web
+    type: web
+    runtime: static
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: client/dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false

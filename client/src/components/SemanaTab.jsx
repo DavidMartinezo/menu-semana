@@ -1,0 +1,124 @@
+import { useState } from 'react';
+import { Shuffle, Clock, Wand2, Youtube } from 'lucide-react';
+import { DAYS } from '../data/seed.js';
+import { addDays, formatShort } from '../lib/dates.js';
+import { Select, StarsDisplay } from './ui.jsx';
+
+export default function SemanaTab({
+  meals, plan, setPlan, bfPlan, setBfPlan, breakfasts, mealById, autofill, clearWeek,
+  busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard,
+}) {
+  const easyMeals = meals.filter((m) => m.easy);
+  const otherMeals = meals.filter((m) => !m.easy);
+  const [showAllDay, setShowAllDay] = useState({}); // day.key -> true si se saltó el filtro de "ocupado"
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center gap-2 mb-3 text-sm">
+        <span className="text-stone-400">Semana del</span>
+        <input
+          type="date"
+          value={weekStart}
+          onChange={(e) => setWeekStart(e.target.value)}
+          className="px-2 py-1 rounded-lg border border-stone-200 bg-white text-stone-700"
+        />
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => autofill()} className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition">
+          <Shuffle size={18} /> Sorpréndeme
+        </button>
+        <button onClick={openWizard} className="px-4 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm text-sm font-medium flex items-center gap-1.5">
+          <Wand2 size={16} /> Asistente
+        </button>
+        <button onClick={clearWeek} className="px-4 bg-white text-stone-500 hover:text-stone-700 rounded-xl shadow-sm text-sm font-medium">Limpiar</button>
+      </div>
+
+      <div className="space-y-3">
+        {DAYS.map((d, i) => {
+          const cena = mealById[plan[d.key]];
+          const prevCena = i > 0 ? mealById[plan[DAYS[i - 1].key]] : null;
+          const showLeftover = prevCena && prevCena.left;
+          const busy = !!busyDays[d.key];
+          const filterActive = busy && !showAllDay[d.key];
+          return (
+            <div key={d.key} className="bg-white rounded-xl shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="font-semibold text-stone-800">{d.label}</span>
+                <span className="text-xs text-stone-400">{formatShort(addDays(weekStart, i))}</span>
+                <button
+                  onClick={() => toggleBusyDay(d.key)}
+                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition ${busy ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-400 hover:text-stone-600'}`}
+                >
+                  <Clock size={12} /> {busy ? 'Ocupado · solo fáciles' : 'Marcar ocupado'}
+                </button>
+                {busy && (
+                  <button
+                    onClick={() => setShowAllDay((p) => ({ ...p, [d.key]: !p[d.key] }))}
+                    className="text-xs text-stone-400 underline hover:text-stone-600"
+                  >
+                    {filterActive ? 'Mostrar todas' : 'Solo fáciles'}
+                  </button>
+                )}
+              </div>
+
+              <label className="block text-xs text-stone-400 mb-1">Desayuno</label>
+              <Select value={bfPlan[d.key] || ''} onChange={(v) => setBfPlan((p) => ({ ...p, [d.key]: v }))} placeholder="Elegir desayuno">
+                {breakfasts.map((b) => <option key={b} value={b}>{b}</option>)}
+              </Select>
+
+              <div className="mt-3 text-xs">
+                <span className="text-stone-400">Almuerzo: </span>
+                {showLeftover
+                  ? <span className="text-emerald-700 font-medium">Sobras de {prevCena.name}</span>
+                  : <span className="text-stone-400 italic">definir aparte</span>}
+              </div>
+
+              <label className="block text-xs text-stone-400 mt-3 mb-1">Cena</label>
+              <Select value={plan[d.key] || ''} onChange={(v) => setPlan((p) => ({ ...p, [d.key]: v }))} placeholder="Elegir cena">
+                {filterActive ? (
+                  easyMeals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)
+                ) : busy ? (
+                  <>
+                    <optgroup label="⚡ Fáciles (recomendadas)">
+                      {easyMeals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </optgroup>
+                    <optgroup label="Otras">
+                      {otherMeals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </optgroup>
+                  </>
+                ) : (
+                  meals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)
+                )}
+              </Select>
+
+              {cena && (
+                <>
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-xs items-center">
+                    {cena.favorite && <span className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">❤️ Favorito</span>}
+                    {cena.rating > 0 && <span className="bg-amber-50 px-2 py-0.5 rounded-full"><StarsDisplay value={cena.rating} /></span>}
+                    {cena.healthy && <span className="bg-lime-50 text-lime-700 px-2 py-0.5 rounded-full">🥗 Saludable</span>}
+                    {cena.left && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">Rinde para el almuerzo</span>}
+                    {cena.videoUrl && (
+                      <a href={cena.videoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-rose-600 hover:underline px-2 py-0.5">
+                        <Youtube size={13} /> Ver video
+                      </a>
+                    )}
+                  </div>
+                  {cena.steps?.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="text-xs text-emerald-700 font-medium cursor-pointer">Ver pasos</summary>
+                      <ol className="mt-1 ml-4 list-decimal text-xs text-stone-600 space-y-0.5">
+                        {cena.steps.map((s, k) => <li key={k}>{s}</li>)}
+                      </ol>
+                    </details>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
