@@ -13,10 +13,11 @@ import urlRoute from './routes/importUrl.js';
 
 const app = express();
 
-// Render pone la app detrás de un único proxy inverso. Sin esto, el rate limiter de abajo
-// vería siempre la IP del proxy (no la del usuario real) y el límite aplicaría a "todos
-// mezclados" en vez de por IP real. "1" = confiar solo en ese primer salto, no en cualquier
-// X-Forwarded-For que mande el cliente (eso sí sería falsificable).
+// Render sirve todo detrás de Cloudflare + su propio proxy, así que hay más de un salto
+// antes de llegar aquí — no sabemos con certeza cuántos, y adivinar mal rompe el rate
+// limiter de abajo (cada petición cae en un salto distinto y nunca se junta el conteo).
+// Por eso el limiter de abajo NO usa la IP derivada de Express/X-Forwarded-For: usa
+// CF-Connecting-IP, que pone Cloudflare mismo y el cliente no puede falsificar.
 app.set('trust proxy', 1);
 
 // En dev no hay CLIENT_URL y se permite cualquier origen (localhost en varios puertos).
@@ -35,6 +36,10 @@ const aiLimiter = rateLimit({
   standardHeaders: true,    // manda RateLimit-* en la respuesta
   legacyHeaders: false,
   message: { error: 'Demasiadas peticiones. Espera un rato y vuelve a intentar.' },
+  // CF-Connecting-IP es la IP real del cliente vista por Cloudflare (Cloudflare la pone
+  // ella misma en su borde; el cliente no puede mandarla y que se la crean). En dev, sin
+  // Cloudflare de por medio, no existe ese header y se cae a la IP normal de la conexión.
+  keyGenerator: (req) => req.headers['cf-connecting-ip'] || req.ip,
 });
 
 // Chequeo rápido de salud: abre http://localhost:3001/api/health
