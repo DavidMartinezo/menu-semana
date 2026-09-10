@@ -8,21 +8,44 @@ import ListaTab from './components/ListaTab.jsx';
 import RecetasTab from './components/RecetasTab.jsx';
 import MealEditor from './components/MealEditor.jsx';
 import PlanWizard from './components/PlanWizard.jsx';
+import WeeksList from './components/WeeksList.jsx';
 
 const STORE_KEY = 'planner-v1';
+
+// Plan vacío para una semana que todavía no tiene nada guardado.
+const EMPTY_WEEK = { plan: {}, bfPlan: {}, busyDays: {}, checked: {} };
 
 export default function App() {
   const [tab, setTab] = useState('semana');
   const [meals, setMeals] = useState(null); // null = cargando
   const [breakfasts, setBreakfasts] = useState([]);
-  const [plan, setPlan] = useState({});      // day.key -> mealId (cena)
-  const [bfPlan, setBfPlan] = useState({});   // day.key -> desayuno
-  const [checked, setChecked] = useState({}); // marca de comprado en la lista
-  const [busyDays, setBusyDays] = useState({}); // day.key -> true si el usuario lo marcó ocupado
-  const [weekStart, setWeekStart] = useState(mondayOf()); // fecha (ISO) del lunes de la semana planificada
+  // Cada semana (identificada por su lunes en ISO) guarda su propio plan, para que cambiar
+  // de fecha nunca borre lo que ya estaba planeado en otra semana.
+  const [weeks, setWeeks] = useState({}); // weekStartISO -> {plan, bfPlan, busyDays, checked}
+  const [weekStart, setWeekStart] = useState(mondayOf()); // fecha (ISO) del lunes de la semana que se está viendo
   const [healthyOnly, setHealthyOnly] = useState(false);  // preferencia persistente del wizard/Recetas
   const [editing, setEditing] = useState(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [weeksListOpen, setWeeksListOpen] = useState(false);
+
+  const currentWeek = weeks[weekStart] || EMPTY_WEEK;
+  const { plan, bfPlan, busyDays, checked } = currentWeek;
+
+  // Escribe en la semana actualmente activa (weekStart), sin tocar las demás.
+  const updateWeek = (key, updater) =>
+    setWeeks((prev) => {
+      const wk = prev[weekStart] || EMPTY_WEEK;
+      const nextVal = typeof updater === 'function' ? updater(wk[key]) : updater;
+      return { ...prev, [weekStart]: { ...wk, [key]: nextVal } };
+    });
+
+  const setPlan = (u) => updateWeek('plan', u);
+  const setBfPlan = (u) => updateWeek('bfPlan', u);
+  const setBusyDays = (u) => updateWeek('busyDays', u);
+  const setChecked = (u) => updateWeek('checked', u);
+
+  const deleteWeek = (key) =>
+    setWeeks((prev) => { const next = { ...prev }; delete next[key]; return next; });
 
   // --- Cargar del almacenamiento (o sembrar la primera vez) ---
   useEffect(() => {
@@ -35,11 +58,15 @@ export default function App() {
           // en recetas guardadas antes de que existieran, para no perderlas ni romper la UI.
           setMeals(d.meals?.length ? d.meals.map(normalizeMeal) : withIds(SEED_MEALS));
           setBreakfasts(d.breakfasts?.length ? d.breakfasts : SEED_BREAKFASTS);
-          setPlan(d.plan || {});
-          setBfPlan(d.bfPlan || {});
-          setChecked(d.checked || {});
-          setBusyDays(d.busyDays || {});
-          setWeekStart(d.weekStart || mondayOf());
+          const ws = d.weekStart || mondayOf();
+          if (d.weeks) {
+            setWeeks(d.weeks); // formato nuevo: una semana por fecha
+          } else {
+            // formato viejo (una sola semana suelta, de antes de este cambio): se migra a la
+            // nueva forma para no perder el plan que el usuario ya tenía armado.
+            setWeeks({ [ws]: { plan: d.plan || {}, bfPlan: d.bfPlan || {}, busyDays: d.busyDays || {}, checked: d.checked || {} } });
+          }
+          setWeekStart(ws);
           setHealthyOnly(d.healthyOnly || false);
           return;
         }
@@ -54,11 +81,11 @@ export default function App() {
     if (meals === null) return;
     const t = setTimeout(() => {
       storage.set(STORE_KEY, JSON.stringify({
-        meals, breakfasts, plan, bfPlan, checked, busyDays, weekStart, healthyOnly,
+        meals, breakfasts, weeks, weekStart, healthyOnly,
       })).catch(() => {});
     }, 300);
     return () => clearTimeout(t);
-  }, [meals, breakfasts, plan, bfPlan, checked, busyDays, weekStart, healthyOnly]);
+  }, [meals, breakfasts, weeks, weekStart, healthyOnly]);
 
   const toggleBusyDay = (key) => setBusyDays((p) => ({ ...p, [key]: !p[key] }));
 
@@ -175,6 +202,7 @@ export default function App() {
           <SemanaTab {...{
             meals, plan, setPlan, bfPlan, setBfPlan, breakfasts, mealById, autofill, clearWeek,
             busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard: () => setWizardOpen(true),
+            openWeeksList: () => setWeeksListOpen(true),
           }} />
         )}
         {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, mealById }} />}
@@ -200,6 +228,16 @@ export default function App() {
             autofill({ busy: selBusy, healthy: selHealthy });
             setWizardOpen(false);
           }}
+        />
+      )}
+
+      {weeksListOpen && (
+        <WeeksList
+          weeks={weeks}
+          weekStart={weekStart}
+          onSelect={(k) => { setWeekStart(k); setWeeksListOpen(false); }}
+          onDelete={deleteWeek}
+          onClose={() => setWeeksListOpen(false)}
         />
       )}
     </div>

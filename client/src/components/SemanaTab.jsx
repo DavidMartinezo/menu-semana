@@ -1,20 +1,27 @@
 import { useState } from 'react';
-import { Shuffle, Clock, Wand2, Youtube } from 'lucide-react';
+import { Shuffle, Clock, Wand2, Youtube, CalendarDays, CalendarPlus } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
-import { Select, StarsDisplay } from './ui.jsx';
+import { buildWeekICS, downloadICS } from '../lib/ics.js';
+import { Autocomplete, StarsDisplay } from './ui.jsx';
 
 export default function SemanaTab({
   meals, plan, setPlan, bfPlan, setBfPlan, breakfasts, mealById, autofill, clearWeek,
-  busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard,
+  busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList,
 }) {
   const easyMeals = meals.filter((m) => m.easy);
   const otherMeals = meals.filter((m) => !m.easy);
   const [showAllDay, setShowAllDay] = useState({}); // day.key -> true si se saltó el filtro de "ocupado"
 
+  const hasAnyPlan = DAYS.some((d) => plan[d.key] || bfPlan[d.key]);
+  const handleExportICS = () => {
+    const ics = buildWeekICS({ DAYS, weekStart, plan, bfPlan, mealById });
+    downloadICS(ics, `menu-semana-${weekStart}.ics`);
+  };
+
   return (
     <div className="mt-4">
-      <div className="flex items-center gap-2 mb-3 text-sm">
+      <div className="flex items-center gap-2 mb-3 text-sm flex-wrap">
         <span className="text-stone-400">Semana del</span>
         <input
           type="date"
@@ -22,9 +29,12 @@ export default function SemanaTab({
           onChange={(e) => setWeekStart(e.target.value)}
           className="px-2 py-1 rounded-lg border border-stone-200 bg-white text-stone-700"
         />
+        <button onClick={openWeeksList} className="text-xs text-emerald-700 font-medium flex items-center gap-1 hover:underline">
+          <CalendarDays size={14} /> Mis semanas
+        </button>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 flex-wrap">
         <button onClick={() => autofill()} className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition">
           <Shuffle size={18} /> Sorpréndeme
         </button>
@@ -32,6 +42,13 @@ export default function SemanaTab({
           <Wand2 size={16} /> Asistente
         </button>
         <button onClick={clearWeek} className="px-4 bg-white text-stone-500 hover:text-stone-700 rounded-xl shadow-sm text-sm font-medium">Limpiar</button>
+        <button
+          onClick={handleExportICS}
+          disabled={!hasAnyPlan}
+          className="px-4 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm text-sm font-medium flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <CalendarPlus size={16} /> Agregar al calendario
+        </button>
       </div>
 
       <div className="space-y-3">
@@ -63,9 +80,12 @@ export default function SemanaTab({
               </div>
 
               <label className="block text-xs text-stone-400 mb-1">Desayuno</label>
-              <Select value={bfPlan[d.key] || ''} onChange={(v) => setBfPlan((p) => ({ ...p, [d.key]: v }))} placeholder="Elegir desayuno">
-                {breakfasts.map((b) => <option key={b} value={b}>{b}</option>)}
-              </Select>
+              <Autocomplete
+                value={bfPlan[d.key] || ''}
+                onChange={(v) => setBfPlan((p) => ({ ...p, [d.key]: v }))}
+                placeholder="Elegir desayuno"
+                options={breakfasts.map((b) => ({ value: b, label: b }))}
+              />
 
               <div className="mt-3 text-xs">
                 <span className="text-stone-400">Almuerzo: </span>
@@ -75,22 +95,21 @@ export default function SemanaTab({
               </div>
 
               <label className="block text-xs text-stone-400 mt-3 mb-1">Cena</label>
-              <Select value={plan[d.key] || ''} onChange={(v) => setPlan((p) => ({ ...p, [d.key]: v }))} placeholder="Elegir cena">
-                {filterActive ? (
-                  easyMeals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)
-                ) : busy ? (
-                  <>
-                    <optgroup label="⚡ Fáciles (recomendadas)">
-                      {easyMeals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                    </optgroup>
-                    <optgroup label="Otras">
-                      {otherMeals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                    </optgroup>
-                  </>
-                ) : (
-                  meals.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)
-                )}
-              </Select>
+              <Autocomplete
+                value={plan[d.key] || ''}
+                onChange={(v) => setPlan((p) => ({ ...p, [d.key]: v }))}
+                placeholder="Elegir cena"
+                options={
+                  filterActive
+                    ? easyMeals.map((m) => ({ value: m.id, label: m.name }))
+                    : busy
+                    ? [
+                        ...easyMeals.map((m) => ({ value: m.id, label: m.name, group: '⚡ Fáciles (recomendadas)' })),
+                        ...otherMeals.map((m) => ({ value: m.id, label: m.name, group: 'Otras' })),
+                      ]
+                    : meals.map((m) => ({ value: m.id, label: m.name }))
+                }
+              />
 
               {cena && (
                 <>
