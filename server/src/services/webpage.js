@@ -18,18 +18,23 @@ const PRIVATE_V4 = [
   /^172\.(1[6-9]|2\d|3[0-1])\./,
 ];
 
-function isPrivateIp(ip) {
+export function isPrivateIp(ip) {
   if (net.isIPv4(ip)) return PRIVATE_V4.some((r) => r.test(ip));
   if (net.isIPv6(ip)) {
     const lower = ip.toLowerCase();
-    return lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80') || lower.startsWith('::ffff:127.');
+    if (lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80')) return true;
+    // IPv4 "mapeada" dentro de IPv6 (ej. "::ffff:10.0.0.1"): hay que revisar la IPv4 embebida
+    // con las mismas reglas, no solo el caso de loopback — si no, "::ffff:192.168.1.1" se cuela.
+    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return PRIVATE_V4.some((r) => r.test(mapped[1]));
+    return false;
   }
   return true; // no sabemos qué es -> mejor bloquear
 }
 
 // Evita que alguien use este endpoint para hacer que el servidor le pegue a su propia
 // red interna (localhost, IPs privadas, metadata de la nube, etc.).
-async function assertPublicHost(hostname) {
+export async function assertPublicHost(hostname) {
   if (hostname === 'localhost') throw new Error('Esa URL no es válida.');
   let addresses;
   try {
@@ -108,26 +113,49 @@ function fromVisibleText($) {
   return pieces.join('\n\n');
 }
 
-export async function getRecipeTextFromUrl(rawUrl) {
-  const url = new URL(rawUrl);
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('Esa URL no es válida.');
-  }
-  await assertPublicHost(url.hostname);
+const MAX_REDIRECTS = 5;
 
-  let res;
-  try {
-    res = await fetch(url.href, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MenuSemanaBot/1.0)' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(15000),
-    });
-  } catch {
-    throw new Error('No pude abrir esa página. Revisa el enlace.');
+// Pide la URL sin dejar que fetch siga redirecciones solo: cada salto se valida contra
+// assertPublicHost antes de seguirlo. Si no se hiciera así, una URL pública podría redirigir
+// a una IP privada (ej. metadata de la nube) y el chequeo inicial no lo agarraría — el chequeo
+// de "IP no privada" tiene que aplicar en cada hop, no solo en el primero.
+// `fetchImpl` es inyectable para poder probar esta lógica con un fetch falso, sin red real.
+async function fetchValidated(startUrl, fetchImpl = fetch) {
+  let current = startUrl;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (!['http:', 'https:'].includes(current.protocol)) {
+      throw new Error('Esa URL no es válida.');
+    }
+    await assertPublicHost(current.hostname);
+
+    let res;
+    try {
+      res = await fetchImpl(current.href, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MenuSemanaBot/1.0)' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch {
+      throw new Error('No pude abrir esa página. Revisa el enlace.');
+    }
+
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const location = res.headers.get('location');
+      if (!location) throw new Error('La página respondió con una redirección inválida.');
+      current = new URL(location, current.href); // la Location puede venir relativa
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`La página respondió con error (${res.status}).`);
+    }
+    return res;
   }
-  if (!res.ok) {
-    throw new Error(`La página respondió con error (${res.status}).`);
-  }
+  throw new Error('Demasiadas redirecciones.');
+}
+
+export async function getRecipeTextFromUrl(rawUrl, fetchImpl = fetch) {
+  const url = new URL(rawUrl);
+  const res = await fetchValidated(url, fetchImpl);
 
   const html = (await res.text()).slice(0, MAX_HTML_CHARS);
   const $ = cheerio.load(html);
