@@ -3,9 +3,9 @@ import { ShoppingCart, Check } from 'lucide-react';
 import { DAYS, STORE_META } from '../data/seed.js';
 import { CopyBtn } from './ui.jsx';
 
-export default function ListaTab({ shopping, checked, setChecked, plan, mealById }) {
+export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById }) {
   const [copied, setCopied] = useState('');
-  const anyMeals = DAYS.some((d) => mealById[plan[d.key]]);
+  const anyMeals = DAYS.some((d) => mealById[plan[d.key]] || mealById[bfPlan[d.key]] || mealById[lunchPlan[d.key]]);
 
   const copyText = async (text, label) => {
     try {
@@ -39,15 +39,20 @@ export default function ListaTab({ shopping, checked, setChecked, plan, mealById
 
   const byRecipeText = () => {
     let out = '';
-    for (const d of DAYS) {
-      const m = mealById[plan[d.key]];
-      if (!m) continue;
+    const addMeal = (m) => {
+      if (!m) return;
       out += `${m.name}\n`;
       m.ing.forEach((g) => {
         const qty = typeof g.qty === 'number' ? `${g.qty}${g.unit ? ' ' + g.unit : ''} ` : '';
         out += `  • ${qty}${g.item} (${STORE_META[g.store].label}${g.pantry ? ', despensa' : ''})\n`;
       });
       out += '\n';
+    };
+    for (const d of DAYS) {
+      addMeal(mealById[bfPlan[d.key]]);
+      // El almuerzo solo se lista si se eligió a mano (ver mismo criterio en shopping, App.jsx).
+      if (lunchPlan[d.key]) addMeal(mealById[lunchPlan[d.key]]);
+      addMeal(mealById[plan[d.key]]);
     }
     return out.trim();
   };

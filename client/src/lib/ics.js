@@ -8,6 +8,8 @@ export const DINNER_START = '18:00';
 export const DINNER_END = '19:00';
 export const BREAKFAST_START = '07:00';
 export const BREAKFAST_END = '07:30';
+export const LUNCH_START = '12:30';
+export const LUNCH_END = '13:30';
 export const ALARM_HOUR_BEFORE = '19:00'; // recordatorio, la noche anterior a la cena
 
 // Escapa texto para campos TEXT de RFC 5545. El backslash va primero para no
@@ -94,7 +96,7 @@ function buildEventLines({ uid, dtStart, dtEnd, summary, description, alarmDescr
 // líneas más largas (DESCRIPTION con varios ingredientes) rondan 150-250 caracteres, y los
 // calendarios modernos (Apple, Google, Outlook) las toleran igual. Si algún día un import
 // real falla por esto, folding es lo primero a agregar.
-export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, mealById }) {
+export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan = {}, mealById }) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -107,13 +109,25 @@ export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, mealById }) {
   DAYS.forEach((d, i) => {
     const isoDate = addDays(weekStart, i);
 
-    const bf = bfPlan[d.key];
+    const bf = mealById[bfPlan[d.key]];
     if (bf) {
       lines.push(...buildEventLines({
         uid: makeUID(isoDate, 'desayuno'),
         dtStart: toICSDateTime(isoDate, BREAKFAST_START),
         dtEnd: toICSDateTime(isoDate, BREAKFAST_END),
-        summary: `Desayuno: ${bf}`,
+        summary: `Desayuno: ${bf.name}`,
+      }));
+    }
+
+    // El almuerzo solo genera evento cuando se eligió a mano (si no, se está infiriendo
+    // de sobras y no hay una receta concreta que poner en el calendario).
+    const lunch = mealById[lunchPlan[d.key]];
+    if (lunch) {
+      lines.push(...buildEventLines({
+        uid: makeUID(isoDate, 'almuerzo'),
+        dtStart: toICSDateTime(isoDate, LUNCH_START),
+        dtEnd: toICSDateTime(isoDate, LUNCH_END),
+        summary: `Almuerzo: ${lunch.name}`,
       }));
     }
 

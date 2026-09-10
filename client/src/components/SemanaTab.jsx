@@ -6,16 +6,19 @@ import { buildWeekICS, downloadICS } from '../lib/ics.js';
 import { Autocomplete, StarsDisplay } from './ui.jsx';
 
 export default function SemanaTab({
-  meals, plan, setPlan, bfPlan, setBfPlan, breakfasts, mealById, autofill, clearWeek,
+  meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, mealById, autofill, clearWeek,
   busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList,
 }) {
-  const easyMeals = meals.filter((m) => m.easy);
-  const otherMeals = meals.filter((m) => !m.easy);
+  const cenaCandidates = meals.filter((m) => m.types.includes('cena'));
+  const bfCandidates = meals.filter((m) => m.types.includes('desayuno'));
+  const lunchCandidates = meals.filter((m) => m.types.includes('almuerzo'));
+  const easyMeals = cenaCandidates.filter((m) => m.easy);
+  const otherMeals = cenaCandidates.filter((m) => !m.easy);
   const [showAllDay, setShowAllDay] = useState({}); // day.key -> true si se saltó el filtro de "ocupado"
 
-  const hasAnyPlan = DAYS.some((d) => plan[d.key] || bfPlan[d.key]);
+  const hasAnyPlan = DAYS.some((d) => plan[d.key] || bfPlan[d.key] || lunchPlan[d.key]);
   const handleExportICS = () => {
-    const ics = buildWeekICS({ DAYS, weekStart, plan, bfPlan, mealById });
+    const ics = buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan, mealById });
     downloadICS(ics, `menu-semana-${weekStart}.ics`);
   };
 
@@ -84,15 +87,18 @@ export default function SemanaTab({
                 value={bfPlan[d.key] || ''}
                 onChange={(v) => setBfPlan((p) => ({ ...p, [d.key]: v }))}
                 placeholder="Elegir desayuno"
-                options={breakfasts.map((b) => ({ value: b, label: b }))}
+                options={bfCandidates.map((m) => ({ value: m.id, label: m.name }))}
               />
 
-              <div className="mt-3 text-xs">
-                <span className="text-stone-400">Almuerzo: </span>
-                {showLeftover
-                  ? <span className="text-emerald-700 font-medium">Sobras de {prevCena.name}</span>
-                  : <span className="text-stone-400 italic">definir aparte</span>}
-              </div>
+              <label className="block text-xs text-stone-400 mt-3 mb-1">
+                Almuerzo{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case"> · sobras de {prevCena.name}</span>}
+              </label>
+              <Autocomplete
+                value={lunchPlan[d.key] || ''}
+                onChange={(v) => setLunchPlan((p) => ({ ...p, [d.key]: v }))}
+                placeholder={showLeftover ? `Usar sobras de ${prevCena.name} (o elegir otra)` : 'Elegir almuerzo (o dejar sin definir)'}
+                options={lunchCandidates.map((m) => ({ value: m.id, label: m.name }))}
+              />
 
               <label className="block text-xs text-stone-400 mt-3 mb-1">Cena</label>
               <Autocomplete
@@ -107,7 +113,7 @@ export default function SemanaTab({
                         ...easyMeals.map((m) => ({ value: m.id, label: m.name, group: '⚡ Fáciles (recomendadas)' })),
                         ...otherMeals.map((m) => ({ value: m.id, label: m.name, group: 'Otras' })),
                       ]
-                    : meals.map((m) => ({ value: m.id, label: m.name }))
+                    : cenaCandidates.map((m) => ({ value: m.id, label: m.name }))
                 }
               />
 

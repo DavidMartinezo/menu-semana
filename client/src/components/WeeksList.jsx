@@ -2,7 +2,7 @@ import { X, Trash2, ArrowRight, CalendarDays } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
 
-const EMPTY_WEEK = { plan: {}, bfPlan: {}, busyDays: {}, checked: {} };
+const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {} };
 
 // Modal con la lista de todas las semanas guardadas (pasadas y futuras), para saltar entre
 // ellas sin perder lo que ya está planeado en cada una.

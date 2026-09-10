@@ -6,16 +6,24 @@ import { extractFromText, importFromYoutube, importFromUrl } from '../lib/api.js
 // Aplica una receta devuelta por el backend a los campos del formulario.
 // favorite/rating/healthy no vienen de la IA (son gusto personal) — el usuario los pone a mano.
 function applyRecipe(parsed, setters) {
-  const { setName, setCat, setEasy, setLeft, setSteps, setIng, setVideoUrl, setSourceUrl } = setters;
+  const { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl } = setters;
   if (parsed.name) setName(parsed.name);
   if (parsed.cat) setCat(parsed.cat);
   if (typeof parsed.easy === 'boolean') setEasy(parsed.easy);
   if (typeof parsed.left === 'boolean') setLeft(parsed.left);
+  // Sugerencia de la IA, no autoritativa — el usuario puede corregir los toggles después.
+  if (Array.isArray(parsed.types) && parsed.types.length) setTypes(parsed.types);
   if (Array.isArray(parsed.steps)) setSteps(parsed.steps);
   if (Array.isArray(parsed.ing) && parsed.ing.length) setIng(parsed.ing);
   if (parsed.videoUrl) setVideoUrl(parsed.videoUrl);
   if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
 }
+
+const TYPE_META = [
+  ['desayuno', '🌅 Desayuno'],
+  ['almuerzo', '🥪 Almuerzo'],
+  ['cena', '🌙 Cena'],
+];
 
 const UNITS = ['', 'unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente'];
 
@@ -27,6 +35,7 @@ export default function MealEditor({ meal, onClose, onSave }) {
   const [rating, setRating] = useState(meal.rating || 0);
   const [healthy, setHealthy] = useState(meal.healthy || false);
   const [left, setLeft] = useState(meal.left);
+  const [types, setTypes] = useState(meal.types?.length ? meal.types : ['cena']);
   const [videoUrl, setVideoUrl] = useState(meal.videoUrl || '');
   const [sourceUrl, setSourceUrl] = useState(meal.sourceUrl || '');
   const [steps, setSteps] = useState(meal.steps || []);
@@ -38,8 +47,9 @@ export default function MealEditor({ meal, onClose, onSave }) {
   const [busy, setBusy] = useState('');   // '', 'youtube', 'url' o 'text'
   const [err, setErr] = useState('');
 
-  const setters = { setName, setCat, setEasy, setLeft, setSteps, setIng, setVideoUrl, setSourceUrl };
+  const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl };
   const setIngAt = (i, patch) => setIng((p) => p.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const toggleType = (t) => setTypes((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]));
 
   const runImport = async (kind) => {
     setBusy(kind);
@@ -137,6 +147,17 @@ export default function MealEditor({ meal, onClose, onSave }) {
             <input value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Ej. Salvadoreño"
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white" />
           </div>
+          <div>
+            <label className="text-xs text-stone-500">¿Cuándo se sirve? (puede ser más de uno)</label>
+            <div className="flex gap-2 mt-1">
+              {TYPE_META.map(([t, label]) => (
+                <Toggle key={t} on={types.includes(t)} set={() => toggleType(t)} label={label} />
+              ))}
+            </div>
+            {types.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">Sin ningún tipo marcado, esta receta no va a aparecer en los pickers de la semana.</p>
+            )}
+          </div>
           <div className="flex gap-2">
             <Toggle on={easy} set={setEasy} label="⚡ Fácil" />
             <Toggle on={left} set={setLeft} label="Rinde" />
@@ -220,7 +241,7 @@ export default function MealEditor({ meal, onClose, onSave }) {
                 ...meal,
                 name: name.trim(),
                 cat: cat.trim() || 'Otros',
-                easy, favorite, rating, healthy, left,
+                easy, favorite, rating, healthy, left, types,
                 videoUrl: videoUrl.trim(),
                 sourceUrl: sourceUrl.trim(),
                 steps: steps.map((s) => s.trim()).filter(Boolean),

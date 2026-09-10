@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Calendar, ShoppingCart, BookOpen } from 'lucide-react';
 import { storage } from './lib/storage.js';
-import { SEED_MEALS, SEED_BREAKFASTS, DAYS, uid, withIds, normalizeMeal } from './data/seed.js';
+import { SEED_MEALS, DAYS, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
 import { mondayOf } from './lib/dates.js';
 import SemanaTab from './components/SemanaTab.jsx';
 import ListaTab from './components/ListaTab.jsx';
@@ -11,17 +11,17 @@ import PlanWizard from './components/PlanWizard.jsx';
 import WeeksList from './components/WeeksList.jsx';
 
 const STORE_KEY = 'planner-v1';
+const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/cena con types)
 
 // Plan vacío para una semana que todavía no tiene nada guardado.
-const EMPTY_WEEK = { plan: {}, bfPlan: {}, busyDays: {}, checked: {} };
+const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {} };
 
 export default function App() {
   const [tab, setTab] = useState('semana');
   const [meals, setMeals] = useState(null); // null = cargando
-  const [breakfasts, setBreakfasts] = useState([]);
   // Cada semana (identificada por su lunes en ISO) guarda su propio plan, para que cambiar
   // de fecha nunca borre lo que ya estaba planeado en otra semana.
-  const [weeks, setWeeks] = useState({}); // weekStartISO -> {plan, bfPlan, busyDays, checked}
+  const [weeks, setWeeks] = useState({}); // weekStartISO -> {plan, bfPlan, lunchPlan, busyDays, checked}
   const [weekStart, setWeekStart] = useState(mondayOf()); // fecha (ISO) del lunes de la semana que se está viendo
   const [healthyOnly, setHealthyOnly] = useState(false);  // preferencia persistente del wizard/Recetas
   const [editing, setEditing] = useState(null);
@@ -29,7 +29,7 @@ export default function App() {
   const [weeksListOpen, setWeeksListOpen] = useState(false);
 
   const currentWeek = weeks[weekStart] || EMPTY_WEEK;
-  const { plan, bfPlan, busyDays, checked } = currentWeek;
+  const { plan, bfPlan, lunchPlan, busyDays, checked } = currentWeek;
 
   // Escribe en la semana actualmente activa (weekStart), sin tocar las demás.
   const updateWeek = (key, updater) =>
@@ -41,6 +41,7 @@ export default function App() {
 
   const setPlan = (u) => updateWeek('plan', u);
   const setBfPlan = (u) => updateWeek('bfPlan', u);
+  const setLunchPlan = (u) => updateWeek('lunchPlan', u);
   const setBusyDays = (u) => updateWeek('busyDays', u);
   const setChecked = (u) => updateWeek('checked', u);
 
@@ -54,25 +55,64 @@ export default function App() {
         const r = await storage.get(STORE_KEY);
         if (r?.value) {
           const d = JSON.parse(r.value);
-          // normalizeMeal rellena campos nuevos (healthy, videoUrl, qty/unit/pantry por ingrediente)
-          // en recetas guardadas antes de que existieran, para no perderlas ni romper la UI.
-          setMeals(d.meals?.length ? d.meals.map(normalizeMeal) : withIds(SEED_MEALS));
-          setBreakfasts(d.breakfasts?.length ? d.breakfasts : SEED_BREAKFASTS);
           const ws = d.weekStart || mondayOf();
-          if (d.weeks) {
-            setWeeks(d.weeks); // formato nuevo: una semana por fecha
+
+          // normalizeMeal rellena campos nuevos (healthy, videoUrl, qty/unit/pantry por ingrediente,
+          // types) en recetas guardadas antes de que existieran, para no perderlas ni romper la UI.
+          let meals = d.meals?.length ? d.meals.map(normalizeMeal) : withIds(SEED_MEALS);
+
+          // Si no hay "weeks" (guardado de antes de esa feature), se arma una sola entrada con
+          // el plan suelto que hubiera a nivel raíz.
+          let weeksDict = d.weeks || {
+            [ws]: { plan: d.plan || {}, bfPlan: d.bfPlan || {}, busyDays: d.busyDays || {}, checked: d.checked || {} },
+          };
+
+          // Migración al banco unificado (v2): antes, el desayuno vivía aparte como puros
+          // strings sueltos (sin ingredientes ni id). Se convierte una sola vez a recetas
+          // normales del banco (types:['desayuno']) y se reescriben las referencias guardadas
+          // para que apunten al id nuevo en vez del nombre.
+          const isLegacy = !d.schemaVersion || d.schemaVersion < SCHEMA_VERSION;
+          if (isLegacy) {
+            const names = new Set(d.breakfasts || []);
+            for (const w of Object.values(weeksDict)) {
+              for (const name of Object.values(w.bfPlan || {})) {
+                if (name) names.add(name);
+              }
+            }
+            const nameToId = {};
+            for (const name of names) {
+              const bf = breakfastNameToMeal(name);
+              meals = [...meals, bf];
+              nameToId[name] = bf.id;
+            }
+            weeksDict = Object.fromEntries(
+              Object.entries(weeksDict).map(([key, w]) => [
+                key,
+                {
+                  ...w,
+                  bfPlan: Object.fromEntries(
+                    Object.entries(w.bfPlan || {}).map(([day, name]) => [day, nameToId[name] || name])
+                  ),
+                  lunchPlan: w.lunchPlan || {},
+                },
+              ])
+            );
           } else {
-            // formato viejo (una sola semana suelta, de antes de este cambio): se migra a la
-            // nueva forma para no perder el plan que el usuario ya tenía armado.
-            setWeeks({ [ws]: { plan: d.plan || {}, bfPlan: d.bfPlan || {}, busyDays: d.busyDays || {}, checked: d.checked || {} } });
+            // Ya en v2 — de todos modos se completa lunchPlan por si una semana quedó guardada
+            // sin él (ej. un guardado interrumpido a mitad de este mismo cambio).
+            weeksDict = Object.fromEntries(
+              Object.entries(weeksDict).map(([key, w]) => [key, { ...w, lunchPlan: w.lunchPlan || {} }])
+            );
           }
+
+          setMeals(meals);
+          setWeeks(weeksDict);
           setWeekStart(ws);
           setHealthyOnly(d.healthyOnly || false);
           return;
         }
       } catch { /* primera vez */ }
       setMeals(withIds(SEED_MEALS));
-      setBreakfasts(SEED_BREAKFASTS);
     })();
   }, []);
 
@@ -81,11 +121,11 @@ export default function App() {
     if (meals === null) return;
     const t = setTimeout(() => {
       storage.set(STORE_KEY, JSON.stringify({
-        meals, breakfasts, weeks, weekStart, healthyOnly,
+        schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly,
       })).catch(() => {});
     }, 300);
     return () => clearTimeout(t);
-  }, [meals, breakfasts, weeks, weekStart, healthyOnly]);
+  }, [meals, weeks, weekStart, healthyOnly]);
 
   const toggleBusyDay = (key) => setBusyDays((p) => ({ ...p, [key]: !p[key] }));
 
@@ -93,49 +133,62 @@ export default function App() {
 
   // --- Llenar la semana automáticamente: respeta días ocupados (solo fáciles) y, si aplica,
   // el modo saludable. Acepta overrides explícitos para que el wizard pueda aplicar valores
-  // recién elegidos sin esperar a que el estado de React se actualice. También llena desayunos.
-  const autofill = ({ busy = busyDays, healthy = healthyOnly } = {}) => {
-    if (!meals?.length) return;
-    const shuffle = (a) => a.map((v) => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+  // recién elegidos sin esperar a que el estado de React se actualice. También llena desayunos,
+  // con la misma lógica de "no repetir en la semana" que la cena. El almuerzo NO se autocompleta
+  // — sigue sugiriendo sobras del día anterior por defecto; el usuario lo elige a mano si quiere otra cosa.
+  const shuffle = (a) => a.map((v) => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
 
-    let base = healthy ? meals.filter((m) => m.healthy) : meals;
-    if (!base.length) base = meals; // si el modo saludable se queda sin opciones, no dejamos días vacíos
-
-    const easy = base.filter((m) => m.easy);
-    let poolEasy = shuffle(easy.length ? easy : base);
-    let poolAll = shuffle(base);
+  // Reparte un pool de recetas entre los 7 días sin repetir hasta agotar la variedad; si el día
+  // está marcado ocupado, prioriza el subconjunto "fácil" del pool.
+  const fillWeek = (pool, busy) => {
+    const easy = pool.filter((m) => m.easy);
+    let poolEasy = shuffle(easy.length ? easy : pool);
+    let poolAll = shuffle(pool);
     const used = new Set();
     const next = {};
     for (const d of DAYS) {
       const isBusy = !!busy[d.key];
-      const pool = isBusy ? poolEasy : poolAll;
-      let pick = pool.find((m) => !used.has(m.id));
+      const p = isBusy ? poolEasy : poolAll;
+      let pick = p.find((m) => !used.has(m.id));
       if (!pick) { // se agotó la variedad: reiniciamos
-        pick = (isBusy ? shuffle(easy.length ? easy : base) : shuffle(base))[0];
+        pick = (isBusy ? shuffle(easy.length ? easy : pool) : shuffle(pool))[0];
         used.clear();
       }
       if (pick) { next[d.key] = pick.id; used.add(pick.id); }
     }
-    setPlan(next);
-    setChecked({});
-
-    if (breakfasts.length) {
-      const bfShuffled = shuffle(breakfasts);
-      const nextBf = {};
-      DAYS.forEach((d, i) => { nextBf[d.key] = bfShuffled[i % bfShuffled.length]; });
-      setBfPlan(nextBf);
-    }
+    return next;
   };
 
-  const clearWeek = () => { setPlan({}); setBfPlan({}); setChecked({}); };
+  const autofill = ({ busy = busyDays, healthy = healthyOnly } = {}) => {
+    if (!meals?.length) return;
+
+    let base = healthy ? meals.filter((m) => m.healthy) : meals;
+    if (!base.length) base = meals; // si el modo saludable se queda sin opciones, no dejamos días vacíos
+
+    // Si el filtro saludable deja un tipo sin candidatos, se cae al banco completo de ese tipo
+    // en vez de dejar el día vacío.
+    const poolFor = (type) => {
+      const typed = base.filter((m) => m.types.includes(type));
+      return typed.length ? typed : meals.filter((m) => m.types.includes(type));
+    };
+    const cenaPool = poolFor('cena');
+    const bfPool = poolFor('desayuno');
+
+    if (cenaPool.length) {
+      setPlan(fillWeek(cenaPool, busy));
+      setChecked({});
+    }
+    if (bfPool.length) setBfPlan(fillWeek(bfPool, {})); // el desayuno no tiene noción de "ocupado"
+  };
+
+  const clearWeek = () => { setPlan({}); setBfPlan({}); setLunchPlan({}); setChecked({}); };
 
   // --- Lista de compras agregada, agrupada por tienda; despensa aparte y sin cantidad ---
   const shopping = useMemo(() => {
     const groups = { costco: {}, walmart: {}, both: {} };
     const pantry = {};
-    for (const d of DAYS) {
-      const m = mealById[plan[d.key]];
-      if (!m) continue;
+    const addMealIngredients = (m) => {
+      if (!m) return;
       for (const g of m.ing) {
         const itemKey = g.item.toLowerCase().trim();
         if (g.pantry) {
@@ -154,6 +207,13 @@ export default function App() {
         }
         if (!bucket[groupKey].from.includes(m.name)) bucket[groupKey].from.push(m.name);
       }
+    };
+    for (const d of DAYS) {
+      addMealIngredients(mealById[plan[d.key]]);
+      addMealIngredients(mealById[bfPlan[d.key]]);
+      // El almuerzo solo suma si se eligió a mano — si se está infiriendo de sobras, esos
+      // ingredientes ya se contaron con la cena del día anterior; sumarlos de nuevo duplicaría.
+      if (lunchPlan[d.key]) addMealIngredients(mealById[lunchPlan[d.key]]);
     }
     const toList = (o) => Object.values(o).sort((a, b) => a.item.localeCompare(b.item));
     return {
@@ -162,7 +222,7 @@ export default function App() {
       both: toList(groups.both),
       pantry: toList(pantry),
     };
-  }, [plan, mealById]);
+  }, [plan, bfPlan, lunchPlan, mealById]);
 
   const saveMeal = (m) =>
     setMeals((prev) =>
@@ -200,12 +260,12 @@ export default function App() {
 
         {tab === 'semana' && (
           <SemanaTab {...{
-            meals, plan, setPlan, bfPlan, setBfPlan, breakfasts, mealById, autofill, clearWeek,
+            meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, mealById, autofill, clearWeek,
             busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard: () => setWizardOpen(true),
             openWeeksList: () => setWeeksListOpen(true),
           }} />
         )}
-        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, mealById }} />}
+        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById }} />}
         {tab === 'recetas' && <RecetasTab {...{ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }} />}
       </div>
 

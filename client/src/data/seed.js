@@ -1,5 +1,7 @@
 // Datos iniciales (banco de comidas) y constantes compartidas.
 // store por ingrediente: 'costco' | 'walmart' | 'both'
+// Las recetas de este array no traen "types" explícito: normalizeMeal() las completa
+// como ['cena'], que es para lo que siempre fueron pensadas.
 
 export const SEED_MEALS = [
   { name: 'Salmón a la plancha con arroz', cat: 'Pescado', easy: true, favorite: false, rating: 0, healthy: false, left: true, ing: [
@@ -46,11 +48,19 @@ export const SEED_MEALS = [
     ['Camarones', 'costco'], ['Ajo', 'walmart'], ['Mantequilla', 'walmart'], ['Arroz', 'costco'], ['Perejil', 'walmart'] ] },
   { name: 'Panes con pollo', cat: 'Salvadoreño', easy: false, favorite: false, rating: 0, healthy: false, left: true, ing: [
     ['Pollo en piezas', 'costco'], ['Pan francés (bolillo)', 'walmart'], ['Lechuga', 'walmart'], ['Tomate', 'walmart'], ['Pepino', 'walmart'], ['Berro/rábano', 'walmart'] ] },
-];
 
-export const SEED_BREAKFASTS = [
-  'Huevos revueltos con tortilla', 'Pancakes', 'Cereal con fruta', 'Licuado de banano', 'Pan francés (French toast)',
-  'Huevos con frijoles y plátano', 'Yogurt con granola', 'Waffles', 'Avena con fruta', 'Quesadilla rápida',
+  // Desayunos: antes vivían aparte como puros nombres (sin ingredientes ni banco propio).
+  // Ahora son recetas normales del mismo banco, solo que marcadas types: ['desayuno'].
+  { name: 'Huevos revueltos con tortilla', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Pancakes', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Cereal con fruta', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Licuado de banano', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Pan francés (French toast)', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Huevos con frijoles y plátano', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Yogurt con granola', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Waffles', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Avena con fruta', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
+  { name: 'Quesadilla rápida', cat: 'Desayuno', easy: true, favorite: false, rating: 0, healthy: false, left: false, types: ['desayuno'], ing: [] },
 ];
 
 // Los días no traen "ocupado" fijo: el usuario los marca desde la UI (ver busyDays en App.jsx).
@@ -91,6 +101,8 @@ export const normalizeMeal = (m) => ({
   sourceUrl: m.sourceUrl || '',
   steps: m.steps || [],
   ing: (m.ing || []).map(normalizeIng),
+  // Recetas guardadas antes de que existiera "types" eran, en la práctica, siempre de cena.
+  types: Array.isArray(m.types) && m.types.length ? m.types : ['cena'],
 });
 
 // Convierte el formato compacto del seed (tuplas [item, store]) a objetos normalizados con id.
@@ -102,3 +114,22 @@ export const withIds = (arr) =>
       ing: m.ing.map(([item, store]) => ({ item, store })),
     })
   );
+
+// Convierte un nombre de desayuno del formato viejo (puro string, sin banco propio) en una
+// receta completa del banco unificado, marcada types: ['desayuno']. La usa la migración de
+// datos guardados en App.jsx la primera vez que se carga la app tras este cambio.
+export const breakfastNameToMeal = (name) => ({
+  id: uid(),
+  name,
+  cat: 'Desayuno',
+  easy: true,
+  favorite: false,
+  rating: 0,
+  healthy: false,
+  left: false,
+  videoUrl: '',
+  sourceUrl: '',
+  steps: [],
+  ing: [],
+  types: ['desayuno'],
+});

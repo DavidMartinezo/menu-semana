@@ -2,37 +2,47 @@ import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Search, Youtube, Link as LinkIcon } from 'lucide-react';
 import { Tag, StarsDisplay } from './ui.jsx';
 
+const TYPE_META = {
+  desayuno: '🌅 Desayuno',
+  almuerzo: '🥪 Almuerzo',
+  cena: '🌙 Cena',
+};
+
 // Texto plano por receta (nombre + categoría + etiquetas) para que la búsqueda encuentre
-// tanto "pollo" como "fácil" o "favorito".
+// tanto "pollo" como "fácil", "favorito" o "desayuno".
 const searchable = (m) =>
-  [m.name, m.cat, m.easy && 'fácil', m.favorite && 'favorito', m.left && 'rinde', m.healthy && 'saludable']
+  [m.name, m.cat, m.easy && 'fácil', m.favorite && 'favorito', m.left && 'rinde', m.healthy && 'saludable', ...(m.types || [])]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
 
 export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }) {
   const [q, setQ] = useState('');
+  const [typeFilter, setTypeFilter] = useState({ desayuno: false, almuerzo: false, cena: false });
+  const toggleType = (t) => setTypeFilter((p) => ({ ...p, [t]: !p[t] }));
+  const anyTypeSelected = Object.values(typeFilter).some(Boolean);
 
   const filtered = useMemo(() => {
     let list = meals;
     if (healthyOnly) list = list.filter((m) => m.healthy);
+    if (anyTypeSelected) list = list.filter((m) => m.types.some((t) => typeFilter[t]));
     const query = q.trim().toLowerCase();
     if (query) list = list.filter((m) => searchable(m).includes(query));
     return list;
-  }, [meals, q, healthyOnly]);
+  }, [meals, q, healthyOnly, typeFilter, anyTypeSelected]);
 
   const cats = [...new Set(filtered.map((m) => m.cat))].sort();
 
   return (
     <div className="mt-4">
       <button
-        onClick={() => setEditing({ name: '', cat: 'Salvadoreño', easy: true, favorite: false, rating: 0, healthy: false, left: true, steps: [], ing: [] })}
+        onClick={() => setEditing({ name: '', cat: 'Salvadoreño', easy: true, favorite: false, rating: 0, healthy: false, left: true, types: ['cena'], steps: [], ing: [] })}
         className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 rounded-xl shadow-sm mb-4"
       >
         <Plus size={18} /> Agregar comida
       </button>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
           <input
@@ -50,6 +60,18 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
         </button>
       </div>
 
+      <div className="flex gap-2 mb-4">
+        {Object.entries(TYPE_META).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => toggleType(t)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 ${typeFilter[t] ? 'bg-emerald-700 text-white' : 'bg-white text-stone-500 border border-stone-200'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {filtered.length === 0 && (
         <p className="text-center text-sm text-stone-400 mt-8">No hay recetas que coincidan.</p>
       )}
@@ -63,6 +85,7 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-stone-800 truncate">{m.name}</div>
                   <div className="flex gap-1.5 mt-1 flex-wrap items-center">
+                    {m.types?.map((t) => <Tag key={t}>{TYPE_META[t] || t}</Tag>)}
                     {m.easy && <Tag>⚡ Fácil</Tag>}
                     {m.favorite && <Tag>❤️ Favorito</Tag>}
                     {m.rating > 0 && <Tag><StarsDisplay value={m.rating} /></Tag>}

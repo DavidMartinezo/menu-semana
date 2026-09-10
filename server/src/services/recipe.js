@@ -4,7 +4,7 @@ export function buildPrompt(source) {
   return `Extrae la receta de este contenido para una familia que compra en Costco y Walmart.
 
 Devuelve SOLO JSON válido (sin markdown, sin texto extra) con esta forma exacta:
-{"name":"...","cat":"...","easy":true,"left":true,"steps":["..."],"ing":[{"item":"...","store":"costco","qty":2,"unit":"unidad","pantry":false}]}
+{"name":"...","cat":"...","easy":true,"left":true,"types":["cena"],"steps":["..."],"ing":[{"item":"...","store":"costco","qty":2,"unit":"unidad","pantry":false}]}
 
 Reglas:
 - "store" es "costco", "walmart" o "both".
@@ -12,6 +12,9 @@ Reglas:
 - walmart: especias, hierbas frescas, verduras sueltas, salsas específicas, pan, productos regionales.
 - "easy": true si se cocina en menos de 30 min o pocos pasos.
 - "left": true si rinde como sobras para el almuerzo del día siguiente.
+- "types": arreglo con cualquier combinación de "desayuno", "almuerzo", "cena" — cuándo se sirve.
+  Úsalo si el título/descripción lo menciona explícitamente (puede ser más de uno). Si no hay
+  ninguna señal clara, usa ["cena"].
 - "cat": categoría corta (ej. Salvadoreño, Pollo, Pescado, Pasta, Res).
 - "steps": pasos cortos en orden. Si el contenido no trae pasos claros, usa [].
 - "qty": cantidad numérica si el contenido la menciona (ej. 2, 500). Si no la menciona o es "al gusto", usa null.
@@ -25,6 +28,8 @@ Reglas:
 Contenido:
 ${source}`;
 }
+
+const VALID_TYPES = new Set(['desayuno', 'almuerzo', 'cena']);
 
 // Respaldo por si la IA no convierte la unidad como se le pidió (ej. contenido en inglés).
 const VALID_UNITS = new Set(['unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente']);
@@ -65,6 +70,10 @@ export function parseRecipe(text) {
     cat: parsed.cat || 'Otros',
     easy: !!parsed.easy,
     left: !!parsed.left,
+    types: (() => {
+      const t = Array.isArray(parsed.types) ? parsed.types.filter((x) => VALID_TYPES.has(x)) : [];
+      return t.length ? t : ['cena'];
+    })(),
     steps: Array.isArray(parsed.steps) ? parsed.steps.filter(Boolean) : [],
     ing: Array.isArray(parsed.ing)
       ? parsed.ing
