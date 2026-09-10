@@ -15,12 +15,39 @@ Reglas:
 - "cat": categoría corta (ej. Salvadoreño, Pollo, Pescado, Pasta, Res).
 - "steps": pasos cortos en orden. Si el contenido no trae pasos claros, usa [].
 - "qty": cantidad numérica si el contenido la menciona (ej. 2, 500). Si no la menciona o es "al gusto", usa null.
-- "unit": la unidad tal como aparece (ej. "g", "kg", "ml", "unidad", "diente", "taza", "cda", "lb"). Usa "" si no aplica.
+- "unit": conviértela SIEMPRE a una de estas opciones exactas, sin importar el idioma original del contenido:
+  "unidad", "g", "kg", "ml", "l", "lb", "oz", "taza", "cda", "cdta", "diente". Usa "" si no aplica o no se menciona.
+  Equivalencias comunes: cup/cups→taza; tsp/teaspoon→cdta; tbsp/tablespoon→cda; clove/cloves→diente;
+  piece/pieces→unidad; pound/pounds→lb; ounce/ounces→oz; gram/grams→g; kilogram/kilo→kg; milliliter→ml; liter/litre→l.
 - "pantry": true si es un ingrediente de despensa que casi siempre ya se tiene en casa y no se compra cada semana (sal, especias secas, aceite, azúcar). false para lo demás.
 - Ingredientes y pasos en español, nombres cortos.
 
 Contenido:
 ${source}`;
+}
+
+// Respaldo por si la IA no convierte la unidad como se le pidió (ej. contenido en inglés).
+const VALID_UNITS = new Set(['unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente']);
+const UNIT_ALIASES = {
+  cup: 'taza', cups: 'taza',
+  tsp: 'cdta', teaspoon: 'cdta', teaspoons: 'cdta',
+  tbsp: 'cda', tablespoon: 'cda', tablespoons: 'cda',
+  clove: 'diente', cloves: 'diente',
+  piece: 'unidad', pieces: 'unidad', unit: 'unidad', units: 'unidad',
+  pound: 'lb', pounds: 'lb', lbs: 'lb',
+  ounce: 'oz', ounces: 'oz',
+  gram: 'g', grams: 'g', gr: 'g',
+  kilogram: 'kg', kilograms: 'kg', kilo: 'kg', kilos: 'kg',
+  milliliter: 'ml', milliliters: 'ml', millilitre: 'ml',
+  liter: 'l', liters: 'l', litre: 'l', litres: 'l',
+};
+
+function normalizeUnit(raw) {
+  const u = typeof raw === 'string' ? raw.trim() : '';
+  if (!u) return '';
+  const lower = u.toLowerCase();
+  if (VALID_UNITS.has(lower)) return lower;
+  return UNIT_ALIASES[lower] || u;
 }
 
 // La IA a veces envuelve el JSON en ```json ... ```; lo limpiamos y recortamos al objeto.
@@ -46,7 +73,7 @@ export function parseRecipe(text) {
             item: g.item,
             store: ['costco', 'walmart', 'both'].includes(g.store) ? g.store : 'costco',
             qty: typeof g.qty === 'number' && !Number.isNaN(g.qty) ? g.qty : null,
-            unit: typeof g.unit === 'string' ? g.unit.trim() : '',
+            unit: normalizeUnit(g.unit),
             pantry: !!g.pantry,
           }))
       : [],
