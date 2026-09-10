@@ -88,6 +88,7 @@ export const normalizeMeal = (m) => ({
   rating: m.rating || 0,
   healthy: !!m.healthy,
   videoUrl: m.videoUrl || '',
+  sourceUrl: m.sourceUrl || '',
   steps: m.steps || [],
   ing: (m.ing || []).map(normalizeIng),
 });

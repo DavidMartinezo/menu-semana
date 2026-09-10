@@ -8,7 +8,7 @@ Planificador de comidas semanal, con:
 - Botón **Sorpréndeme** y un **asistente paso a paso** que arma cenas y desayunos de toda la semana.
 - Almuerzo del día siguiente = sobras de la cena de ayer (automático).
 - **Lista de compras** consolidada por tienda, con cantidades sumadas y una sección aparte para lo de despensa.
-- **Importar recetas desde YouTube** (o pegando texto) usando IA para sacar ingredientes, cantidades y pasos.
+- **Importar recetas desde YouTube, una página web (pegando la URL) o pegando texto** usando IA para sacar ingredientes, cantidades y pasos.
 
 Stack: **React + Vite** (frontend) y **Node + Express** (backend), con Groq (gratis) como motor de IA.
 

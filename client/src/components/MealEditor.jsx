@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { X, Plus, Trash2, Sparkles, Youtube } from 'lucide-react';
+import { X, Plus, Trash2, Sparkles, Youtube, Link as LinkIcon } from 'lucide-react';
 import { Toggle, Stars } from './ui.jsx';
-import { extractFromText, importFromYoutube } from '../lib/api.js';
+import { extractFromText, importFromYoutube, importFromUrl } from '../lib/api.js';
 
 // Aplica una receta devuelta por el backend a los campos del formulario.
 // favorite/rating/healthy no vienen de la IA (son gusto personal) — el usuario los pone a mano.
 function applyRecipe(parsed, setters) {
-  const { setName, setCat, setEasy, setLeft, setSteps, setIng, setVideoUrl } = setters;
+  const { setName, setCat, setEasy, setLeft, setSteps, setIng, setVideoUrl, setSourceUrl } = setters;
   if (parsed.name) setName(parsed.name);
   if (parsed.cat) setCat(parsed.cat);
   if (typeof parsed.easy === 'boolean') setEasy(parsed.easy);
@@ -14,6 +14,7 @@ function applyRecipe(parsed, setters) {
   if (Array.isArray(parsed.steps)) setSteps(parsed.steps);
   if (Array.isArray(parsed.ing) && parsed.ing.length) setIng(parsed.ing);
   if (parsed.videoUrl) setVideoUrl(parsed.videoUrl);
+  if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
 }
 
 const UNITS = ['', 'unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente'];
@@ -27,22 +28,27 @@ export default function MealEditor({ meal, onClose, onSave }) {
   const [healthy, setHealthy] = useState(meal.healthy || false);
   const [left, setLeft] = useState(meal.left);
   const [videoUrl, setVideoUrl] = useState(meal.videoUrl || '');
+  const [sourceUrl, setSourceUrl] = useState(meal.sourceUrl || '');
   const [steps, setSteps] = useState(meal.steps || []);
   const [ing, setIng] = useState(meal.ing.length ? meal.ing : [{ item: '', store: 'costco', qty: null, unit: '', pantry: false }]);
 
   const [url, setUrl] = useState('');
+  const [pageUrl, setPageUrl] = useState('');
   const [raw, setRaw] = useState('');
-  const [busy, setBusy] = useState('');   // '', 'youtube' o 'text'
+  const [busy, setBusy] = useState('');   // '', 'youtube', 'url' o 'text'
   const [err, setErr] = useState('');
 
-  const setters = { setName, setCat, setEasy, setLeft, setSteps, setIng, setVideoUrl };
+  const setters = { setName, setCat, setEasy, setLeft, setSteps, setIng, setVideoUrl, setSourceUrl };
   const setIngAt = (i, patch) => setIng((p) => p.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
   const runImport = async (kind) => {
     setBusy(kind);
     setErr('');
     try {
-      const parsed = kind === 'youtube' ? await importFromYoutube(url) : await extractFromText(raw);
+      const parsed =
+        kind === 'youtube' ? await importFromYoutube(url) :
+        kind === 'url' ? await importFromUrl(pageUrl) :
+        await extractFromText(raw);
       applyRecipe(parsed, setters);
     } catch (e) {
       setErr(e.message || 'Algo falló. Intenta de nuevo.');
@@ -76,6 +82,25 @@ export default function MealEditor({ meal, onClose, onSave }) {
               className="mt-2 w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
             >
               {busy === 'youtube' ? 'Importando…' : <><Youtube size={16} /> Importar receta</>}
+            </button>
+          </div>
+
+          {/* Importar desde página web */}
+          <div className="bg-sky-50 border border-sky-100 rounded-xl p-3">
+            <label className="text-xs font-semibold text-sky-700 flex items-center gap-1.5"><LinkIcon size={14} /> Importar desde página web</label>
+            <p className="text-xs text-stone-500 mt-1">Pega el enlace de un blog de cocina o receta online. Sacamos la receta del contenido de la página.</p>
+            <input
+              value={pageUrl}
+              onChange={(e) => setPageUrl(e.target.value)}
+              placeholder="https://ejemplo.com/receta-de-..."
+              className="w-full mt-2 px-3 py-2 rounded-lg border border-sky-200 bg-white text-sm"
+            />
+            <button
+              onClick={() => runImport('url')}
+              disabled={busy !== '' || !pageUrl.trim()}
+              className="mt-2 w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
+            >
+              {busy === 'url' ? 'Importando…' : <><LinkIcon size={16} /> Importar receta</>}
             </button>
           </div>
 
@@ -128,6 +153,11 @@ export default function MealEditor({ meal, onClose, onSave }) {
           <div>
             <label className="text-xs text-stone-500 flex items-center gap-1"><Youtube size={12} /> Video de YouTube</label>
             <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..."
+              className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-stone-500 flex items-center gap-1"><LinkIcon size={12} /> Página de origen</label>
+            <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://ejemplo.com/receta-de-..."
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm" />
           </div>
 
@@ -192,6 +222,7 @@ export default function MealEditor({ meal, onClose, onSave }) {
                 cat: cat.trim() || 'Otros',
                 easy, favorite, rating, healthy, left,
                 videoUrl: videoUrl.trim(),
+                sourceUrl: sourceUrl.trim(),
                 steps: steps.map((s) => s.trim()).filter(Boolean),
                 ing: ing.filter((g) => g.item.trim()),
               })

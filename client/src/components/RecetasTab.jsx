@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Search, Youtube } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Youtube, Link as LinkIcon } from 'lucide-react';
 import { Tag, StarsDisplay } from './ui.jsx';
 
 // Texto plano por receta (nombre + categoría + etiquetas) para que la búsqueda encuentre
@@ -73,6 +73,12 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
                       <a href={m.videoUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
                         className="flex items-center gap-1 text-xs text-rose-600 hover:underline">
                         <Youtube size={12} /> Ver video
+                      </a>
+                    )}
+                    {m.sourceUrl && (
+                      <a href={m.sourceUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 text-xs text-sky-600 hover:underline">
+                        <LinkIcon size={12} /> Ver receta
                       </a>
                     )}
                   </div>

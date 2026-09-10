@@ -1,12 +1,14 @@
 // Punto de entrada del backend.
-// Levanta un servidor Express con dos endpoints:
+// Levanta un servidor Express con estos endpoints:
 //   POST /api/extract         -> texto de receta -> receta estructurada (JSON)
 //   POST /api/import-youtube  -> URL de YouTube  -> receta estructurada (JSON)
+//   POST /api/import-url      -> URL de página web -> receta estructurada (JSON)
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import extractRoute from './routes/extract.js';
 import youtubeRoute from './routes/importYoutube.js';
+import urlRoute from './routes/importUrl.js';
 
 const app = express();
 
@@ -21,6 +23,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/extract', extractRoute);
 app.use('/api/import-youtube', youtubeRoute);
+app.use('/api/import-url', urlRoute);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

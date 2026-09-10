@@ -21,3 +21,6 @@ export const extractFromText = (text) => post('/api/extract', { text });
 
 // URL de YouTube -> receta estructurada.
 export const importFromYoutube = (url) => post('/api/import-youtube', { url });
+
+// URL de página web (blog de cocina, etc.) -> receta estructurada.
+export const importFromUrl = (url) => post('/api/import-url', { url });
