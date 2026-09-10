@@ -60,6 +60,14 @@ Vite redirige automáticamente las llamadas `/api/...` al backend, así que no t
 | `PORT`              | No          | Puerto del backend (por defecto 3001)                                |
 | `CLIENT_URL`        | No          | Solo en producción: restringe el CORS al dominio del frontend        |
 
+## Variables de entorno (`client/.env`)
+
+| Variable            | Obligatoria | Para qué sirve                                                        |
+|---------------------|-------------|------------------------------------------------------------------------|
+| `VITE_API_URL`      | Solo en prod | URL del backend desplegado (ver abajo)                               |
+| `VITE_POSTHOG_KEY`  | No          | Analítica (PostHog). Sin esto, la app no manda ningún dato.           |
+| `VITE_POSTHOG_HOST` | No          | Host de tu proyecto PostHog (por defecto `https://us.i.posthog.com`) |
+
 ---
 
 ## Cómo funciona la importación de YouTube
@@ -114,6 +122,8 @@ despliegue es semi-automático:
      `https://menu-semana-web.onrender.com`) — la ves en el dashboard del servicio del frontend.
    - En `menu-semana-web`: `VITE_API_URL` = la URL que Render le asignó a `menu-semana-api`
      (algo como `https://menu-semana-api.onrender.com`).
+   - `VITE_POSTHOG_KEY` (opcional): tu clave de proyecto de [PostHog](https://posthog.com)
+     (gratis hasta 1M eventos/mes). Si la dejas vacía, la app simplemente no manda analítica.
 4. Si pusiste `CLIENT_URL`/`VITE_API_URL` después de que ambos servicios ya existían, hace falta un
    **Manual Deploy** en cada uno para que tomen la variable nueva.
 

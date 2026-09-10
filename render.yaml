@@ -27,3 +27,7 @@ services:
     envVars:
       - key: VITE_API_URL
         sync: false
+      - key: VITE_POSTHOG_KEY
+        sync: false
+      - key: VITE_POSTHOG_HOST
+        value: https://us.i.posthog.com

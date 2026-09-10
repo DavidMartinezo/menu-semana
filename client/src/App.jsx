@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Calendar, ShoppingCart, BookOpen } from 'lucide-react';
 import { storage } from './lib/storage.js';
+import { track } from './lib/analytics.js';
 import { SEED_MEALS, DAYS, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
 import { mondayOf } from './lib/dates.js';
 import SemanaTab from './components/SemanaTab.jsx';
@@ -251,7 +252,7 @@ export default function App() {
 
         <nav className="flex gap-1 bg-white rounded-xl p-1 shadow-sm sticky top-2 z-10">
           {tabs.map(({ k, label, Icon }) => (
-            <button key={k} onClick={() => setTab(k)}
+            <button key={k} onClick={() => { setTab(k); track('tab_view', { tab: k }); }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition ${tab === k ? 'bg-emerald-700 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>
               <Icon size={16} /> {label}
             </button>
