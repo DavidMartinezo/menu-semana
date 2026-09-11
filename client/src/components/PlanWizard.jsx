@@ -5,13 +5,20 @@ import { useBackdropClose } from './ui.jsx';
 
 // Asistente de 2 pasos: qué días están ocupados, y si la semana debe ser solo saludable.
 // Al aplicar, reemplaza busyDays por la selección y dispara autofill con esos valores.
-export default function PlanWizard({ busyDays, healthyOnly, onClose, onApply }) {
+export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, onClose, onApply }) {
   const [step, setStep] = useState(0);
   const [selDays, setSelDays] = useState(busyDays || {});
   const [selHealthy, setSelHealthy] = useState(!!healthyOnly);
+  const [selReuseDinner, setSelReuseDinner] = useState(true);
+  const [selFillLunch, setSelFillLunch] = useState(false);
 
   const toggleDay = (key) => setSelDays((p) => ({ ...p, [key]: !p[key] }));
   const backdrop = useBackdropClose(onClose);
+
+  const pill = (active) =>
+    `text-xs px-3 py-1.5 rounded-lg border font-medium disabled:opacity-40 ${
+      active ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-stone-500 border-stone-200'
+    }`;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
@@ -60,6 +67,33 @@ export default function PlanWizard({ busyDays, healthyOnly, onClose, onApply }) 
                   <div className={`text-xs ${selHealthy ? 'text-emerald-100' : 'text-stone-400'}`}>Solo recetas marcadas como saludables</div>
                 </button>
               </div>
+
+              <div className="mt-5 pt-4 border-t border-stone-200 space-y-3">
+                <p className="text-sm font-medium text-stone-700">Almuerzo</p>
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-stone-600 flex-1">Aprovechar la cena del día anterior cuando se pueda</span>
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setSelReuseDinner(true)} className={pill(selReuseDinner)}>Sí</button>
+                    <button onClick={() => setSelReuseDinner(false)} className={pill(!selReuseDinner)}>No</button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-stone-600 flex-1">
+                    Generar recetas de almuerzo para los demás días
+                    {lunchPoolSize === 0 && (
+                      <span className="block text-[11px] text-stone-400 mt-0.5">
+                        Aún no tienes recetas marcadas como almuerzo — agrégaselo en Recetas
+                      </span>
+                    )}
+                  </span>
+                  <div className="flex gap-1 shrink-0">
+                    <button disabled={lunchPoolSize === 0} onClick={() => setSelFillLunch(true)} className={pill(selFillLunch)}>Sí</button>
+                    <button disabled={lunchPoolSize === 0} onClick={() => setSelFillLunch(false)} className={pill(!selFillLunch)}>No</button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -76,7 +110,12 @@ export default function PlanWizard({ busyDays, healthyOnly, onClose, onApply }) 
             </button>
           ) : (
             <button
-              onClick={() => onApply({ busyDays: selDays, healthyOnly: selHealthy })}
+              onClick={() => onApply({
+                busyDays: selDays,
+                healthyOnly: selHealthy,
+                reuseDinner: selReuseDinner,
+                fillLunch: selFillLunch && lunchPoolSize > 0,
+              })}
               className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl"
             >
               Armar semana

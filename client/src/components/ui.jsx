@@ -17,7 +17,7 @@ export function useBackdropClose(onClose) {
 // Combobox con autocompletado: escribe para filtrar la lista, click o Enter para elegir.
 // `options` es un array plano [{value, label, group?}]; `group` agrupa visualmente en el
 // desplegable (equivalente a los <optgroup> que tenía el <select> nativo).
-export function Autocomplete({ value, onChange, options, placeholder }) {
+export function Autocomplete({ value, onChange, options, placeholder, emptyText = 'Sin resultados' }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -83,7 +83,7 @@ export function Autocomplete({ value, onChange, options, placeholder }) {
       <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
       {open && (
         <div className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-lg text-sm">
-          {flat.length === 0 && <div className="px-3 py-2 text-stone-400">Sin resultados</div>}
+          {flat.length === 0 && <div className="px-3 py-2 text-stone-400">{emptyText}</div>}
           {showClear && (
             <button
               type="button"

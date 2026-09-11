@@ -119,8 +119,8 @@ export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan = {}, me
       }));
     }
 
-    // El almuerzo solo genera evento cuando se eligió a mano (si no, se está infiriendo
-    // de sobras y no hay una receta concreta que poner en el calendario).
+    // El almuerzo solo genera evento cuando se eligió a mano (si no, se está aprovechando
+    // la cena de ayer y no hay una receta concreta que poner en el calendario).
     const lunch = mealById[lunchPlan[d.key]];
     if (lunch) {
       lines.push(...buildEventLines({

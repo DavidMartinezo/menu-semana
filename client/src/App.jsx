@@ -174,8 +174,9 @@ export default function App({ user }) {
   // --- Llenar la semana automáticamente: respeta días ocupados (solo fáciles) y, si aplica,
   // el modo saludable. Acepta overrides explícitos para que el wizard pueda aplicar valores
   // recién elegidos sin esperar a que el estado de React se actualice. También llena desayunos,
-  // con la misma lógica de "no repetir en la semana" que la cena. El almuerzo NO se autocompleta
-  // — sigue sugiriendo sobras del día anterior por defecto; el usuario lo elige a mano si quiere otra cosa.
+  // con la misma lógica de "no repetir en la semana" que la cena. El almuerzo depende de lo que
+  // haya elegido el usuario en el asistente: aprovechar la cena del día anterior cuando se pueda,
+  // generar recetas de almuerzo dedicadas, o ambas cosas (ver más abajo).
   const shuffle = (a) => a.map((v) => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
 
   // Reparte un pool de recetas entre los 7 días sin repetir hasta agotar la variedad; si el día
@@ -199,7 +200,7 @@ export default function App({ user }) {
     return next;
   };
 
-  const autofill = ({ busy = busyDays, healthy = healthyOnly } = {}) => {
+  const autofill = ({ busy = busyDays, healthy = healthyOnly, reuseDinner = true, fillLunch = false } = {}) => {
     if (!meals?.length) return;
 
     let base = healthy ? meals.filter((m) => m.healthy) : meals;
@@ -214,11 +215,31 @@ export default function App({ user }) {
     const cenaPool = poolFor('cena');
     const bfPool = poolFor('desayuno');
 
+    let nextPlan = null;
     if (cenaPool.length) {
-      setPlan(fillWeek(cenaPool, busy));
+      nextPlan = fillWeek(cenaPool, busy);
+      setPlan(nextPlan);
       setChecked({});
     }
     if (bfPool.length) setBfPlan(fillWeek(bfPool, {})); // el desayuno no tiene noción de "ocupado"
+
+    // Almuerzo: los días con cena aprovechable (marcada "rinde para el almuerzo") se dejan
+    // vacíos cuando reuseDinner está activo — la sugerencia ya existente en SemanaTab.jsx se
+    // encarga de mostrarlo. Los demás días reciben una receta real del pool de almuerzo si
+    // fillLunch está activo, o se dejan vacíos para elegir a mano.
+    if (reuseDinner || fillLunch) {
+      const plannedCena = nextPlan || plan;
+      const lunchPool = poolFor('almuerzo');
+      const filled = fillLunch && lunchPool.length ? fillWeek(lunchPool, {}) : {};
+      const nextLunch = {};
+      for (let i = 0; i < DAYS.length; i++) {
+        const d = DAYS[i];
+        const prevCena = i > 0 ? mealById[plannedCena[DAYS[i - 1].key]] : null;
+        if (reuseDinner && prevCena?.left) continue; // se deja vacío: la sugerencia ya cubre el día
+        if (filled[d.key]) nextLunch[d.key] = filled[d.key];
+      }
+      setLunchPlan(nextLunch);
+    }
   };
 
   const clearWeek = () => { setPlan({}); setBfPlan({}); setLunchPlan({}); setChecked({}); };
@@ -251,8 +272,8 @@ export default function App({ user }) {
     for (const d of DAYS) {
       addMealIngredients(mealById[plan[d.key]]);
       addMealIngredients(mealById[bfPlan[d.key]]);
-      // El almuerzo solo suma si se eligió a mano — si se está infiriendo de sobras, esos
-      // ingredientes ya se contaron con la cena del día anterior; sumarlos de nuevo duplicaría.
+      // El almuerzo solo suma si se eligió a mano — si se está aprovechando la cena de ayer,
+      // esos ingredientes ya se contaron con la cena del día anterior; sumarlos de nuevo duplicaría.
       if (lunchPlan[d.key]) addMealIngredients(mealById[lunchPlan[d.key]]);
     }
     const toList = (o) => Object.values(o).sort((a, b) => a.item.localeCompare(b.item));
@@ -430,11 +451,12 @@ export default function App({ user }) {
         <PlanWizard
           busyDays={busyDays}
           healthyOnly={healthyOnly}
+          lunchPoolSize={meals.filter((m) => m.types.includes('almuerzo')).length}
           onClose={() => setWizardOpen(false)}
-          onApply={({ busyDays: selBusy, healthyOnly: selHealthy }) => {
+          onApply={({ busyDays: selBusy, healthyOnly: selHealthy, reuseDinner, fillLunch }) => {
             setBusyDays(selBusy);
             setHealthyOnly(selHealthy);
-            autofill({ busy: selBusy, healthy: selHealthy });
+            autofill({ busy: selBusy, healthy: selHealthy, reuseDinner, fillLunch });
             setWizardOpen(false);
           }}
         />

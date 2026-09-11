@@ -102,13 +102,14 @@ export default function SemanaTab({
               />
 
               <label className="block text-xs text-stone-400 mt-3 mb-1">
-                Almuerzo{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case"> · sobras de {prevCena.name}</span>}
+                Almuerzo{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case"> · aprovechando la cena de ayer: {prevCena.name}</span>}
               </label>
               <Autocomplete
                 value={lunchPlan[d.key] || ''}
                 onChange={(v) => setLunchPlan((p) => ({ ...p, [d.key]: v }))}
-                placeholder={showLeftover ? `Usar sobras de ${prevCena.name} (o elegir otra)` : 'Elegir almuerzo (o dejar sin definir)'}
+                placeholder={showLeftover ? `Aprovechar la cena de ayer: ${prevCena.name} (o elegir otra)` : 'Elegir almuerzo (o dejar sin definir)'}
                 options={lunchCandidates.map((m) => ({ value: m.id, label: m.name }))}
+                emptyText="Aún no tienes recetas marcadas como almuerzo — agrégaselo en Recetas"
               />
 
               <label className="block text-xs text-stone-400 mt-3 mb-1">Cena</label>
