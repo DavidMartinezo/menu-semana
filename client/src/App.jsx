@@ -339,12 +339,12 @@ export default function App({ user }) {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800">
       <div className="max-w-3xl mx-auto px-4 pb-24">
-        <header className="pt-6 pb-4 flex items-start justify-between gap-3">
+        <header className="pt-6 pb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">Menú de la semana</h1>
             <p className="text-sm text-stone-500 mt-0.5">Planea, arma la lista y compra sin pensarlo dos veces.</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
             {user.isAnonymous ? (
               <>
                 <span className="text-sm text-stone-500 hidden sm:inline">Modo invitado</span>
