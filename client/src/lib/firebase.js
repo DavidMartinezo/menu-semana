@@ -17,4 +17,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// El ID real de la base en Firebase Console es "default" (sin paréntesis) — la app se creó así
+// por accidente en vez de usar la base "(default)" que el SDK pide si no se le indica nada, y
+// por eso hay que pasarla explícita. Cambiar el ID de una base ya creada no es posible desde la
+// consola, así que apuntamos el código a la que existe en vez de recrear todo de cero.
+export const db = getFirestore(app, 'default');

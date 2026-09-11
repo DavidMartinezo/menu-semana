@@ -27,12 +27,16 @@ export default function App({ user }) {
   const [householdId, setHouseholdId] = useState(user.isAnonymous ? user.uid : null);
   const [shareOpen, setShareOpen] = useState(false);
   const [upgradeError, setUpgradeError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     if (user.isAnonymous) { setHouseholdId(user.uid); return; }
     let cancelled = false;
     setHouseholdId(null);
-    resolveHouseholdId(user.uid).then((id) => { if (!cancelled) setHouseholdId(id); });
+    setLoadError(null);
+    resolveHouseholdId(user.uid)
+      .then((id) => { if (!cancelled) setHouseholdId(id); })
+      .catch((e) => { if (!cancelled) setLoadError(e.message || String(e)); });
     return () => { cancelled = true; };
   }, [user.uid, user.isAnonymous]);
 
@@ -310,6 +314,18 @@ export default function App({ user }) {
       }
     }
   };
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center text-center p-4 gap-3">
+        <p className="text-stone-600">No se pudo cargar tus datos.</p>
+        <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 max-w-md">{loadError}</p>
+        <button onClick={signOutUser} className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50">
+          Cerrar sesión
+        </button>
+      </div>
+    );
+  }
 
   if (meals === null) {
     return <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-400">Cargando…</div>;
