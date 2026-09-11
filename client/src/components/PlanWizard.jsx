@@ -9,16 +9,13 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, onClo
   const [step, setStep] = useState(0);
   const [selDays, setSelDays] = useState(busyDays || {});
   const [selHealthy, setSelHealthy] = useState(!!healthyOnly);
-  const [selReuseDinner, setSelReuseDinner] = useState(true);
-  const [selFillLunch, setSelFillLunch] = useState(false);
+  // 'reuse' = aprovechar la cena de ayer donde se pueda, el resto queda para elegir a mano.
+  // 'generate' = una receta de almuerzo real todos los días, sin depender de la cena anterior.
+  // Son excluyentes — no tiene sentido combinarlas para la semana completa.
+  const [lunchMode, setLunchMode] = useState('reuse');
 
   const toggleDay = (key) => setSelDays((p) => ({ ...p, [key]: !p[key] }));
   const backdrop = useBackdropClose(onClose);
-
-  const pill = (active) =>
-    `text-xs px-3 py-1.5 rounded-lg border font-medium disabled:opacity-40 ${
-      active ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-stone-500 border-stone-200'
-    }`;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
@@ -68,30 +65,31 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, onClo
                 </button>
               </div>
 
-              <div className="mt-5 pt-4 border-t border-stone-200 space-y-3">
-                <p className="text-sm font-medium text-stone-700">Almuerzo</p>
-
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-stone-600 flex-1">Aprovechar la cena del día anterior cuando se pueda</span>
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => setSelReuseDinner(true)} className={pill(selReuseDinner)}>Sí</button>
-                    <button onClick={() => setSelReuseDinner(false)} className={pill(!selReuseDinner)}>No</button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-stone-600 flex-1">
-                    Generar recetas de almuerzo para los demás días
-                    {lunchPoolSize === 0 && (
-                      <span className="block text-[11px] text-stone-400 mt-0.5">
-                        Aún no tienes recetas marcadas como almuerzo — agrégaselo en Recetas
-                      </span>
-                    )}
-                  </span>
-                  <div className="flex gap-1 shrink-0">
-                    <button disabled={lunchPoolSize === 0} onClick={() => setSelFillLunch(true)} className={pill(selFillLunch)}>Sí</button>
-                    <button disabled={lunchPoolSize === 0} onClick={() => setSelFillLunch(false)} className={pill(!selFillLunch)}>No</button>
-                  </div>
+              <div className="mt-5 pt-4 border-t border-stone-200">
+                <p className="text-sm font-medium text-stone-700 mb-1">¿Cómo resolver el almuerzo?</p>
+                <p className="text-xs text-stone-500 mb-3">Elige una — no se combinan.</p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setLunchMode('reuse')}
+                    className={`w-full text-left px-4 py-3 rounded-lg border ${lunchMode === 'reuse' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-stone-600 border-stone-200'}`}
+                  >
+                    <div className="font-medium">Aprovechar la cena de ayer</div>
+                    <div className={`text-xs ${lunchMode === 'reuse' ? 'text-emerald-100' : 'text-stone-400'}`}>
+                      Los días con cena que rinde quedan con esa sugerencia; los demás se dejan para elegir a mano.
+                    </div>
+                  </button>
+                  <button
+                    disabled={lunchPoolSize === 0}
+                    onClick={() => setLunchMode('generate')}
+                    className={`w-full text-left px-4 py-3 rounded-lg border disabled:opacity-40 ${lunchMode === 'generate' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-stone-600 border-stone-200'}`}
+                  >
+                    <div className="font-medium">Generar recetas de almuerzo</div>
+                    <div className={`text-xs ${lunchMode === 'generate' ? 'text-emerald-100' : 'text-stone-400'}`}>
+                      {lunchPoolSize === 0
+                        ? 'Aún no tienes recetas marcadas como almuerzo — agrégaselo en Recetas'
+                        : 'Una receta real cada día, sin depender de la cena anterior.'}
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -113,8 +111,8 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, onClo
               onClick={() => onApply({
                 busyDays: selDays,
                 healthyOnly: selHealthy,
-                reuseDinner: selReuseDinner,
-                fillLunch: selFillLunch && lunchPoolSize > 0,
+                reuseDinner: lunchMode === 'reuse',
+                fillLunch: lunchMode === 'generate' && lunchPoolSize > 0,
               })}
               className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl"
             >
