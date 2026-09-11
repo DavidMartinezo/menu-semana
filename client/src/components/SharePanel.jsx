@@ -8,6 +8,7 @@ import { useBackdropClose, CopyBtn } from './ui.jsx';
 export default function SharePanel({ householdId, isMember, onJoin, onLeave, onClose }) {
   const [code, setCode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [joinError, setJoinError] = useState(null);
   const backdrop = useBackdropClose(onClose);
 
   const copyCode = () => {
@@ -15,6 +16,18 @@ export default function SharePanel({ householdId, isMember, onJoin, onLeave, onC
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
+  };
+
+  const handleJoinClick = () => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    if (trimmed === householdId) {
+      setJoinError('Ese es tu propio código — no hace falta que te unas a él.');
+      return;
+    }
+    setJoinError(null);
+    onJoin(trimmed);
+    setCode('');
   };
 
   return (
@@ -43,18 +56,19 @@ export default function SharePanel({ householdId, isMember, onJoin, onLeave, onC
             <div className="flex items-center gap-2">
               <input
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => { setCode(e.target.value); setJoinError(null); }}
                 placeholder="Pega el código aquí"
                 className="flex-1 px-3 py-2.5 rounded-lg border border-stone-200 bg-white text-sm"
               />
               <button
-                onClick={() => { if (code.trim()) { onJoin(code.trim()); setCode(''); } }}
+                onClick={handleJoinClick}
                 disabled={!code.trim()}
                 className="px-4 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white text-sm font-medium"
               >
                 Unirme
               </button>
             </div>
+            {joinError && <p className="text-xs text-rose-600 mt-1.5">{joinError}</p>}
           </div>
 
           {isMember && (
