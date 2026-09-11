@@ -92,11 +92,18 @@ export default function SemanaTab({
           const showLeftover = !!prevCena && (lunchReuseAll || prevCena.left);
           const busy = !!busyDays[d.key];
           const filterActive = busy && !showAllDay[d.key];
+
+          // Mismo criterio que weekKcal: el almuerzo solo suma si se eligió a mano.
+          const bf = mealById[bfPlan[d.key]];
+          const lunch = lunchPlan[d.key] ? mealById[lunchPlan[d.key]] : null;
+          const dayKcal = [cena, bf, lunch].reduce((sum, m) => (typeof m?.kcal === 'number' ? sum + m.kcal : sum), 0);
+
           return (
             <div key={d.key} className="bg-white rounded-xl shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="font-semibold text-stone-800">{d.label}</span>
                 <span className="text-xs text-stone-400">{formatShort(addDays(weekStart, i))}</span>
+                {dayKcal > 0 && <span className="text-xs text-stone-400">· ~{dayKcal.toLocaleString('es')} kcal</span>}
                 <button
                   onClick={() => toggleBusyDay(d.key)}
                   className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition ${busy ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-400 hover:text-stone-600'}`}
