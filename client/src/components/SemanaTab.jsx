@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Shuffle, Clock, Wand2, Youtube, CalendarDays, CalendarPlus, Trash2 } from 'lucide-react';
+import { Shuffle, Clock, Youtube, CalendarDays, CalendarPlus, Trash2 } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
 import { buildWeekICS, downloadICS } from '../lib/ics.js';
 import { Autocomplete, StarsDisplay } from './ui.jsx';
 
 export default function SemanaTab({
-  meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, mealById, autofill, clearWeek,
+  meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, mealById, clearWeek,
   busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList,
 }) {
   const cenaCandidates = meals.filter((m) => m.types.includes('cena'));
@@ -37,18 +37,12 @@ export default function SemanaTab({
         </button>
       </div>
 
-      <div className="flex rounded-xl shadow-sm overflow-hidden mb-3">
-        <button onClick={() => autofill()} className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 transition">
-          <Shuffle size={18} /> Sorpréndeme
-        </button>
-        <button
-          onClick={openWizard}
-          title="Configurar antes de llenar (días ocupados, modo saludable)"
-          className="w-11 flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white border-l border-white/25"
-        >
-          <Wand2 size={16} />
-        </button>
-      </div>
+      <button
+        onClick={openWizard}
+        className="w-full sm:max-w-xs flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition mb-3"
+      >
+        <Shuffle size={18} /> Sorpréndeme
+      </button>
 
       <div className="flex gap-4 mb-4 px-0.5">
         <button onClick={clearWeek} className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600">
