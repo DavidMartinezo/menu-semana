@@ -106,6 +106,7 @@ export const normalizeMeal = (m) => ({
   // null = todavía sin estimar (distinto de 0 kcal). Se calcula al importar o con el botón
   // "Estimar con IA" en el editor — no se recalcula solo si se editan los ingredientes.
   kcal: typeof m.kcal === 'number' ? m.kcal : null,
+  servings: typeof m.servings === 'number' ? m.servings : null,
 });
 
 // Convierte el formato compacto del seed (tuplas [item, store]) a objetos normalizados con id.
@@ -131,6 +132,7 @@ export const breakfastNameToMeal = (name) => ({
   healthy: false,
   left: false,
   kcal: null,
+  servings: null,
   videoUrl: '',
   sourceUrl: '',
   steps: [],

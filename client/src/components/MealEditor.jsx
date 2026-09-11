@@ -6,7 +6,7 @@ import { extractFromText, importFromYoutube, importFromUrl, estimateKcal } from 
 // Aplica una receta devuelta por el backend a los campos del formulario.
 // favorite/rating/healthy no vienen de la IA (son gusto personal) — el usuario los pone a mano.
 function applyRecipe(parsed, setters) {
-  const { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal } = setters;
+  const { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal, setServings } = setters;
   if (parsed.name) setName(parsed.name);
   if (parsed.cat) setCat(parsed.cat);
   if (typeof parsed.easy === 'boolean') setEasy(parsed.easy);
@@ -18,6 +18,7 @@ function applyRecipe(parsed, setters) {
   if (parsed.videoUrl) setVideoUrl(parsed.videoUrl);
   if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
   if (typeof parsed.kcal === 'number') setKcal(parsed.kcal);
+  if (typeof parsed.servings === 'number') setServings(parsed.servings);
 }
 
 const TYPE_META = [
@@ -42,14 +43,16 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
   const [steps, setSteps] = useState(meal.steps || []);
   const [ing, setIng] = useState(meal.ing.length ? meal.ing : [{ item: '', store: 'costco', qty: null, unit: '', pantry: false }]);
   const [kcal, setKcal] = useState(meal.kcal ?? null);
+  const [servings, setServings] = useState(meal.servings ?? null);
 
   const [url, setUrl] = useState('');
   const [pageUrl, setPageUrl] = useState('');
   const [raw, setRaw] = useState('');
   const [busy, setBusy] = useState('');   // '', 'youtube', 'url', 'text' o 'kcal'
   const [err, setErr] = useState('');
+  const [kcalErr, setKcalErr] = useState('');
 
-  const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal };
+  const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal, setServings };
   const setIngAt = (i, patch) => setIng((p) => p.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const toggleType = (t) => setTypes((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]));
 
@@ -71,16 +74,23 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
 
   const runEstimateKcal = async () => {
     setBusy('kcal');
-    setErr('');
+    setKcalErr('');
     try {
-      const { kcal: estimated } = await estimateKcal({ name, ing, steps });
-      setKcal(estimated);
+      const result = await estimateKcal({ name, ing, steps });
+      if (result.kcal == null) {
+        setKcalErr('La IA no pudo estimarlo con los ingredientes que hay — agrega más detalle o ponlo a mano.');
+      } else {
+        setKcal(result.kcal);
+        if (result.servings != null) setServings(result.servings);
+      }
     } catch (e) {
-      setErr(e.message || 'Algo falló. Intenta de nuevo.');
+      setKcalErr(e.message || 'Algo falló. Intenta de nuevo.');
     } finally {
       setBusy('');
     }
   };
+
+  const hasIngredients = ing.some((g) => g.item.trim());
 
   const backdrop = useBackdropClose(onClose);
 
@@ -192,24 +202,39 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
           </div>
 
           <div>
-            <label className="text-xs text-stone-500">Calorías estimadas</label>
+            <label className="text-xs text-stone-500">Calorías totales de la receta y porciones que rinde</label>
             <div className="flex gap-2 mt-1">
               <input
                 type="number" min="0" step="1"
                 value={kcal ?? ''}
                 onChange={(e) => setKcal(e.target.value === '' ? null : Number(e.target.value))}
-                placeholder="Ej. 650"
+                placeholder="kcal totales"
                 className="w-28 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
+              />
+              <input
+                type="number" min="1" step="1"
+                value={servings ?? ''}
+                onChange={(e) => setServings(e.target.value === '' ? null : Number(e.target.value))}
+                placeholder="porciones"
+                className="w-24 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
               />
               <button
                 onClick={runEstimateKcal}
-                disabled={busy !== '' || !ing.some((g) => g.item.trim())}
+                disabled={busy !== '' || !hasIngredients}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-stone-200 text-stone-600 hover:bg-stone-100 disabled:opacity-50 text-sm font-medium rounded-lg"
               >
                 {busy === 'kcal' ? 'Estimando…' : <><Sparkles size={14} /> Estimar con IA</>}
               </button>
             </div>
-            <p className="text-xs text-stone-400 mt-1">Estimación aproximada, no un dato médico.</p>
+            {kcal != null && servings != null && servings > 0 && (
+              <p className="text-xs text-emerald-700 mt-1">~{Math.round(kcal / servings)} kcal por porción ({servings} porciones)</p>
+            )}
+            {!hasIngredients ? (
+              <p className="text-xs text-amber-600 mt-1">Agrega al menos un ingrediente primero para poder estimar.</p>
+            ) : (
+              <p className="text-xs text-stone-400 mt-1">Estimación aproximada, no un dato médico.</p>
+            )}
+            {kcalErr && <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 mt-1.5">{kcalErr}</p>}
           </div>
 
           <div>
@@ -282,7 +307,7 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
                 ...meal,
                 name: name.trim(),
                 cat: cat.trim() || 'Otros',
-                easy, favorite, rating, healthy, left, types, kcal,
+                easy, favorite, rating, healthy, left, types, kcal, servings,
                 videoUrl: videoUrl.trim(),
                 sourceUrl: sourceUrl.trim(),
                 steps: steps.map((s) => s.trim()).filter(Boolean),

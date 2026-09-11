@@ -25,5 +25,5 @@ export const importFromYoutube = (url) => post('/api/import-youtube', { url });
 // URL de página web (blog de cocina, etc.) -> receta estructurada.
 export const importFromUrl = (url) => post('/api/import-url', { url });
 
-// Ingredientes ya estructurados de una receta existente -> { kcal }.
+// Ingredientes ya estructurados de una receta existente -> { kcal, servings }.
 export const estimateKcal = ({ name, ing, steps }) => post('/api/estimate-kcal', { name, ing, steps });

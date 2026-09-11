@@ -4,7 +4,7 @@ export function buildPrompt(source) {
   return `Extrae la receta de este contenido para una familia que compra en Costco y Walmart.
 
 Devuelve SOLO JSON válido (sin markdown, sin texto extra) con esta forma exacta:
-{"name":"...","cat":"...","easy":true,"left":true,"types":["cena"],"kcal":650,"steps":["..."],"ing":[{"item":"...","store":"costco","qty":2,"unit":"unidad","pantry":false}]}
+{"name":"...","cat":"...","easy":true,"left":true,"types":["cena"],"kcal":650,"servings":4,"steps":["..."],"ing":[{"item":"...","store":"costco","qty":2,"unit":"unidad","pantry":false}]}
 
 Reglas:
 - "store" es "costco", "walmart" o "both".
@@ -26,6 +26,9 @@ Reglas:
 - "kcal": estimación entera de las calorías totales de la receta completa, tal como está
   descrita (todo lo que rinde, no por porción). Es solo un estimado aproximado. Si no hay
   suficiente información para estimarlo, usa null.
+- "servings": estimación entera de cuántas porciones rinde la receta tal como está descrita
+  (ej. según la cantidad de proteína/ingredientes principales — 6 muslos de pollo suele ser
+  para 4-6 personas). Si no se puede estimar, usa null.
 - Ingredientes y pasos en español, nombres cortos.
 
 Contenido:
@@ -74,6 +77,7 @@ export function parseRecipe(text) {
     easy: !!parsed.easy,
     left: !!parsed.left,
     kcal: typeof parsed.kcal === 'number' && !Number.isNaN(parsed.kcal) ? Math.round(parsed.kcal) : null,
+    servings: typeof parsed.servings === 'number' && !Number.isNaN(parsed.servings) ? Math.round(parsed.servings) : null,
     types: (() => {
       const t = Array.isArray(parsed.types) ? parsed.types.filter((x) => VALID_TYPES.has(x)) : [];
       return t.length ? t : ['cena'];
@@ -103,20 +107,31 @@ export function buildKcalPrompt({ name, ing, steps }) {
     .join('\n');
   const stepsText = (steps || []).filter(Boolean).join(' ');
 
-  return `Estima las calorías totales de esta receta completa (todo lo que rinde, tal como
-está descrita, no por porción). Es una estimación aproximada, no necesita ser exacta.
+  return `Estima las calorías totales y las porciones de esta receta completa (todo lo que
+rinde, tal como está descrita). Es una estimación aproximada, no necesita ser exacta.
 
 Receta: ${name || '(sin nombre)'}
 Ingredientes:
 ${ingLines || '(sin ingredientes listados)'}
 ${stepsText ? `Preparación: ${stepsText}` : ''}
 
-Devuelve SOLO un número entero (las kcal totales), sin texto, unidades ni explicación.`;
+Devuelve SOLO JSON válido (sin markdown, sin texto extra) con esta forma exacta:
+{"kcal":650,"servings":4}
+Si no se puede estimar alguno de los dos, usa null en ese campo.`;
 }
 
-// La IA a veces agrega texto alrededor del número ("Aprox. 650 kcal") pese a que se le pidió
-// solo el número — se extrae el primer grupo de dígitos que aparezca en la respuesta.
-export function parseKcal(text) {
-  const match = String(text || '').match(/\d+/);
-  return match ? parseInt(match[0], 10) : null;
+export function parseKcalResponse(text) {
+  const clean = String(text || '').replace(/```json|```/g, '').trim();
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+  if (start === -1 || end === -1) return { kcal: null, servings: null };
+  try {
+    const parsed = JSON.parse(clean.slice(start, end + 1));
+    return {
+      kcal: typeof parsed.kcal === 'number' && !Number.isNaN(parsed.kcal) ? Math.round(parsed.kcal) : null,
+      servings: typeof parsed.servings === 'number' && !Number.isNaN(parsed.servings) ? Math.round(parsed.servings) : null,
+    };
+  } catch {
+    return { kcal: null, servings: null };
+  }
 }

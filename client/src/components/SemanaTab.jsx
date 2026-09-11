@@ -51,7 +51,7 @@ export default function SemanaTab({
         <button onClick={openWeeksList} className="text-xs text-emerald-700 font-medium flex items-center gap-1 hover:underline">
           <CalendarDays size={14} /> Mis semanas
         </button>
-        {weekKcal > 0 && <span className="text-xs text-stone-400">~{weekKcal.toLocaleString('es')} kcal esta semana</span>}
+        {weekKcal > 0 && <span className="text-xs text-stone-400">~{weekKcal.toLocaleString('es')} kcal totales la semana</span>}
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
@@ -103,7 +103,7 @@ export default function SemanaTab({
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="font-semibold text-stone-800">{d.label}</span>
                 <span className="text-xs text-stone-400">{formatShort(addDays(weekStart, i))}</span>
-                {dayKcal > 0 && <span className="text-xs text-stone-400">· ~{dayKcal.toLocaleString('es')} kcal</span>}
+                {dayKcal > 0 && <span className="text-xs text-stone-400">· ~{dayKcal.toLocaleString('es')} kcal totales del día</span>}
                 <button
                   onClick={() => toggleBusyDay(d.key)}
                   className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition ${busy ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-400 hover:text-stone-600'}`}
@@ -163,7 +163,10 @@ export default function SemanaTab({
                     {cena.rating > 0 && <span className="bg-amber-50 px-2 py-0.5 rounded-full"><StarsDisplay value={cena.rating} /></span>}
                     {cena.healthy && <span className="bg-lime-50 text-lime-700 px-2 py-0.5 rounded-full">🥗 Saludable</span>}
                     {cena.left && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">Rinde para el almuerzo</span>}
-                    {cena.kcal != null && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">~{cena.kcal} kcal</span>}
+                    {cena.kcal != null && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">~{cena.kcal} kcal (receta completa)</span>}
+                    {cena.kcal != null && cena.servings > 0 && (
+                      <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">~{Math.round(cena.kcal / cena.servings)} kcal/porción</span>
+                    )}
                     {cena.videoUrl && (
                       <a href={cena.videoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-rose-600 hover:underline px-2 py-0.5">
                         <Youtube size={13} /> Ver video

@@ -1,9 +1,9 @@
-// POST /api/estimate-kcal  { name, ing, steps }  ->  { kcal }
+// POST /api/estimate-kcal  { name, ing, steps }  ->  { kcal, servings }
 // Para recetas que ya existen (banco base, o creadas/editadas a mano) y no pasaron por el
-// importador — estima las calorías a partir de los ingredientes ya estructurados.
+// importador — estima las calorías y porciones a partir de los ingredientes ya estructurados.
 import { Router } from 'express';
 import { complete } from '../services/groq.js';
-import { buildKcalPrompt, parseKcal } from '../services/recipe.js';
+import { buildKcalPrompt, parseKcalResponse } from '../services/recipe.js';
 
 const router = Router();
 
@@ -14,7 +14,7 @@ router.post('/', async (req, res) => {
   }
   try {
     const raw = await complete(buildKcalPrompt({ name, ing, steps }));
-    res.json({ kcal: parseKcal(raw) });
+    res.json(parseKcalResponse(raw));
   } catch (e) {
     console.error('estimate-kcal error:', e);
     res.status(500).json({ error: 'No se pudo estimar las calorías.' });
