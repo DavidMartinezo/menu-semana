@@ -103,6 +103,9 @@ export const normalizeMeal = (m) => ({
   ing: (m.ing || []).map(normalizeIng),
   // Recetas guardadas antes de que existiera "types" eran, en la práctica, siempre de cena.
   types: Array.isArray(m.types) && m.types.length ? m.types : ['cena'],
+  // null = todavía sin estimar (distinto de 0 kcal). Se calcula al importar o con el botón
+  // "Estimar con IA" en el editor — no se recalcula solo si se editan los ingredientes.
+  kcal: typeof m.kcal === 'number' ? m.kcal : null,
 });
 
 // Convierte el formato compacto del seed (tuplas [item, store]) a objetos normalizados con id.
@@ -127,6 +130,7 @@ export const breakfastNameToMeal = (name) => ({
   rating: 0,
   healthy: false,
   left: false,
+  kcal: null,
   videoUrl: '',
   sourceUrl: '',
   steps: [],

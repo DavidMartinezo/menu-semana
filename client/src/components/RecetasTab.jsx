@@ -36,7 +36,7 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
   return (
     <div className="mt-4">
       <button
-        onClick={() => setEditing({ name: '', cat: 'Salvadoreño', easy: true, favorite: false, rating: 0, healthy: false, left: true, types: ['cena'], steps: [], ing: [] })}
+        onClick={() => setEditing({ name: '', cat: 'Salvadoreño', easy: true, favorite: false, rating: 0, healthy: false, left: true, kcal: null, types: ['cena'], steps: [], ing: [] })}
         className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 rounded-xl shadow-sm mb-4"
       >
         <Plus size={18} /> Agregar comida
@@ -91,6 +91,7 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
                     {m.rating > 0 && <Tag><StarsDisplay value={m.rating} /></Tag>}
                     {m.healthy && <Tag>🥗 Saludable</Tag>}
                     {m.left && <Tag>Rinde</Tag>}
+                    {m.kcal != null && <Tag>~{m.kcal} kcal</Tag>}
                     <span className="text-xs text-stone-400">{m.ing.length} ingredientes</span>
                     {m.videoUrl && (
                       <a href={m.videoUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}

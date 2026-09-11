@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { X, Plus, Trash2, Sparkles, Youtube, Link as LinkIcon } from 'lucide-react';
 import { Toggle, Stars, useBackdropClose } from './ui.jsx';
-import { extractFromText, importFromYoutube, importFromUrl } from '../lib/api.js';
+import { extractFromText, importFromYoutube, importFromUrl, estimateKcal } from '../lib/api.js';
 
 // Aplica una receta devuelta por el backend a los campos del formulario.
 // favorite/rating/healthy no vienen de la IA (son gusto personal) — el usuario los pone a mano.
 function applyRecipe(parsed, setters) {
-  const { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl } = setters;
+  const { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal } = setters;
   if (parsed.name) setName(parsed.name);
   if (parsed.cat) setCat(parsed.cat);
   if (typeof parsed.easy === 'boolean') setEasy(parsed.easy);
@@ -17,6 +17,7 @@ function applyRecipe(parsed, setters) {
   if (Array.isArray(parsed.ing) && parsed.ing.length) setIng(parsed.ing);
   if (parsed.videoUrl) setVideoUrl(parsed.videoUrl);
   if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
+  if (typeof parsed.kcal === 'number') setKcal(parsed.kcal);
 }
 
 const TYPE_META = [
@@ -40,14 +41,15 @@ export default function MealEditor({ meal, onClose, onSave }) {
   const [sourceUrl, setSourceUrl] = useState(meal.sourceUrl || '');
   const [steps, setSteps] = useState(meal.steps || []);
   const [ing, setIng] = useState(meal.ing.length ? meal.ing : [{ item: '', store: 'costco', qty: null, unit: '', pantry: false }]);
+  const [kcal, setKcal] = useState(meal.kcal ?? null);
 
   const [url, setUrl] = useState('');
   const [pageUrl, setPageUrl] = useState('');
   const [raw, setRaw] = useState('');
-  const [busy, setBusy] = useState('');   // '', 'youtube', 'url' o 'text'
+  const [busy, setBusy] = useState('');   // '', 'youtube', 'url', 'text' o 'kcal'
   const [err, setErr] = useState('');
 
-  const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl };
+  const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal };
   const setIngAt = (i, patch) => setIng((p) => p.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const toggleType = (t) => setTypes((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]));
 
@@ -60,6 +62,19 @@ export default function MealEditor({ meal, onClose, onSave }) {
         kind === 'url' ? await importFromUrl(pageUrl) :
         await extractFromText(raw);
       applyRecipe(parsed, setters);
+    } catch (e) {
+      setErr(e.message || 'Algo falló. Intenta de nuevo.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const runEstimateKcal = async () => {
+    setBusy('kcal');
+    setErr('');
+    try {
+      const { kcal: estimated } = await estimateKcal({ name, ing, steps });
+      setKcal(estimated);
     } catch (e) {
       setErr(e.message || 'Algo falló. Intenta de nuevo.');
     } finally {
@@ -174,6 +189,27 @@ export default function MealEditor({ meal, onClose, onSave }) {
           </div>
 
           <div>
+            <label className="text-xs text-stone-500">Calorías estimadas</label>
+            <div className="flex gap-2 mt-1">
+              <input
+                type="number" min="0" step="1"
+                value={kcal ?? ''}
+                onChange={(e) => setKcal(e.target.value === '' ? null : Number(e.target.value))}
+                placeholder="Ej. 650"
+                className="w-28 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
+              />
+              <button
+                onClick={runEstimateKcal}
+                disabled={busy !== '' || !ing.some((g) => g.item.trim())}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-stone-200 text-stone-600 hover:bg-stone-100 disabled:opacity-50 text-sm font-medium rounded-lg"
+              >
+                {busy === 'kcal' ? 'Estimando…' : <><Sparkles size={14} /> Estimar con IA</>}
+              </button>
+            </div>
+            <p className="text-xs text-stone-400 mt-1">Estimación aproximada, no un dato médico.</p>
+          </div>
+
+          <div>
             <label className="text-xs text-stone-500 flex items-center gap-1"><Youtube size={12} /> Video de YouTube</label>
             <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..."
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm" />
@@ -243,7 +279,7 @@ export default function MealEditor({ meal, onClose, onSave }) {
                 ...meal,
                 name: name.trim(),
                 cat: cat.trim() || 'Otros',
-                easy, favorite, rating, healthy, left, types,
+                easy, favorite, rating, healthy, left, types, kcal,
                 videoUrl: videoUrl.trim(),
                 sourceUrl: sourceUrl.trim(),
                 steps: steps.map((s) => s.trim()).filter(Boolean),

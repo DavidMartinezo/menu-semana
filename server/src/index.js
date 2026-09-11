@@ -3,6 +3,7 @@
 //   POST /api/extract         -> texto de receta -> receta estructurada (JSON)
 //   POST /api/import-youtube  -> URL de YouTube  -> receta estructurada (JSON)
 //   POST /api/import-url      -> URL de página web -> receta estructurada (JSON)
+//   POST /api/estimate-kcal   -> ingredientes ya estructurados -> estimado de calorías (JSON)
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -10,6 +11,7 @@ import { rateLimit } from 'express-rate-limit';
 import extractRoute from './routes/extract.js';
 import youtubeRoute from './routes/importYoutube.js';
 import urlRoute from './routes/importUrl.js';
+import estimateKcalRoute from './routes/estimateKcal.js';
 
 const app = express();
 
@@ -48,6 +50,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/extract', aiLimiter, extractRoute);
 app.use('/api/import-youtube', aiLimiter, youtubeRoute);
 app.use('/api/import-url', aiLimiter, urlRoute);
+app.use('/api/estimate-kcal', aiLimiter, estimateKcalRoute);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

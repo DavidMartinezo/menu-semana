@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Shuffle, Clock, Youtube, CalendarDays, CalendarPlus, Trash2 } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
@@ -17,6 +17,22 @@ export default function SemanaTab({
   const [showAllDay, setShowAllDay] = useState({}); // day.key -> true si se saltó el filtro de "ocupado"
 
   const hasAnyPlan = DAYS.some((d) => plan[d.key] || bfPlan[d.key] || lunchPlan[d.key]);
+
+  // Solo suma el almuerzo si se eligió a mano — mismo criterio que la lista de compras, para
+  // no sumar de más cuando ese día en realidad se está aprovechando la cena de ayer.
+  const weekKcal = useMemo(() => {
+    let total = 0;
+    for (const d of DAYS) {
+      const cenaK = mealById[plan[d.key]]?.kcal;
+      const bfK = mealById[bfPlan[d.key]]?.kcal;
+      const lunchK = lunchPlan[d.key] ? mealById[lunchPlan[d.key]]?.kcal : null;
+      if (typeof cenaK === 'number') total += cenaK;
+      if (typeof bfK === 'number') total += bfK;
+      if (typeof lunchK === 'number') total += lunchK;
+    }
+    return total;
+  }, [plan, bfPlan, lunchPlan, mealById]);
+
   const handleExportICS = () => {
     const ics = buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan, mealById });
     downloadICS(ics, `menu-semana-${weekStart}.ics`);
@@ -35,6 +51,7 @@ export default function SemanaTab({
         <button onClick={openWeeksList} className="text-xs text-emerald-700 font-medium flex items-center gap-1 hover:underline">
           <CalendarDays size={14} /> Mis semanas
         </button>
+        {weekKcal > 0 && <span className="text-xs text-stone-400">~{weekKcal.toLocaleString('es')} kcal esta semana</span>}
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
@@ -139,6 +156,7 @@ export default function SemanaTab({
                     {cena.rating > 0 && <span className="bg-amber-50 px-2 py-0.5 rounded-full"><StarsDisplay value={cena.rating} /></span>}
                     {cena.healthy && <span className="bg-lime-50 text-lime-700 px-2 py-0.5 rounded-full">🥗 Saludable</span>}
                     {cena.left && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">Rinde para el almuerzo</span>}
+                    {cena.kcal != null && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">~{cena.kcal} kcal</span>}
                     {cena.videoUrl && (
                       <a href={cena.videoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-rose-600 hover:underline px-2 py-0.5">
                         <Youtube size={13} /> Ver video

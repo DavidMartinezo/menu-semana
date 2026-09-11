@@ -4,7 +4,7 @@ export function buildPrompt(source) {
   return `Extrae la receta de este contenido para una familia que compra en Costco y Walmart.
 
 Devuelve SOLO JSON válido (sin markdown, sin texto extra) con esta forma exacta:
-{"name":"...","cat":"...","easy":true,"left":true,"types":["cena"],"steps":["..."],"ing":[{"item":"...","store":"costco","qty":2,"unit":"unidad","pantry":false}]}
+{"name":"...","cat":"...","easy":true,"left":true,"types":["cena"],"kcal":650,"steps":["..."],"ing":[{"item":"...","store":"costco","qty":2,"unit":"unidad","pantry":false}]}
 
 Reglas:
 - "store" es "costco", "walmart" o "both".
@@ -23,6 +23,9 @@ Reglas:
   Equivalencias comunes: cup/cups→taza; tsp/teaspoon→cdta; tbsp/tablespoon→cda; clove/cloves→diente;
   piece/pieces→unidad; pound/pounds→lb; ounce/ounces→oz; gram/grams→g; kilogram/kilo→kg; milliliter→ml; liter/litre→l.
 - "pantry": true si es un ingrediente de despensa que casi siempre ya se tiene en casa y no se compra cada semana (sal, especias secas, aceite, azúcar). false para lo demás.
+- "kcal": estimación entera de las calorías totales de la receta completa, tal como está
+  descrita (todo lo que rinde, no por porción). Es solo un estimado aproximado. Si no hay
+  suficiente información para estimarlo, usa null.
 - Ingredientes y pasos en español, nombres cortos.
 
 Contenido:
@@ -70,6 +73,7 @@ export function parseRecipe(text) {
     cat: parsed.cat || 'Otros',
     easy: !!parsed.easy,
     left: !!parsed.left,
+    kcal: typeof parsed.kcal === 'number' && !Number.isNaN(parsed.kcal) ? Math.round(parsed.kcal) : null,
     types: (() => {
       const t = Array.isArray(parsed.types) ? parsed.types.filter((x) => VALID_TYPES.has(x)) : [];
       return t.length ? t : ['cena'];
@@ -87,4 +91,32 @@ export function parseRecipe(text) {
           }))
       : [],
   };
+}
+
+// Para recetas que ya existen (banco base, o creadas/editadas a mano) y no pasaron por el
+// importador: se le pide a la IA un estimado a partir de los ingredientes ya estructurados,
+// sin tener que volver a mandar todo el texto/video original.
+export function buildKcalPrompt({ name, ing, steps }) {
+  const ingLines = (ing || [])
+    .filter((g) => g && g.item)
+    .map((g) => `- ${[g.qty, g.unit].filter(Boolean).join(' ')} ${g.item}`.trim())
+    .join('\n');
+  const stepsText = (steps || []).filter(Boolean).join(' ');
+
+  return `Estima las calorías totales de esta receta completa (todo lo que rinde, tal como
+está descrita, no por porción). Es una estimación aproximada, no necesita ser exacta.
+
+Receta: ${name || '(sin nombre)'}
+Ingredientes:
+${ingLines || '(sin ingredientes listados)'}
+${stepsText ? `Preparación: ${stepsText}` : ''}
+
+Devuelve SOLO un número entero (las kcal totales), sin texto, unidades ni explicación.`;
+}
+
+// La IA a veces agrega texto alrededor del número ("Aprox. 650 kcal") pese a que se le pidió
+// solo el número — se extrae el primer grupo de dígitos que aparezca en la respuesta.
+export function parseKcal(text) {
+  const match = String(text || '').match(/\d+/);
+  return match ? parseInt(match[0], 10) : null;
 }
