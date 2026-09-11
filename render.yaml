@@ -2,8 +2,13 @@
 # En el dashboard de Render: New > Blueprint > conecta este repo > Apply.
 # Las variables marcadas "sync: false" las pide Render al momento de crear los servicios
 # (no van en este archivo, así que nunca quedan en el repo).
+#
+# NOTA: mientras esta rama (feature/cuentas) no esté fusionada a main, estos servicios llevan
+# el sufijo "-beta" a propósito — así un Blueprint nuevo apuntando a esta rama crea servicios
+# SEPARADOS de los de producción (menu-semana-api / menu-semana-web, que siguen viviendo en
+# main) en vez de tomar control de ellos. Antes de fusionar a main, quitar el sufijo "-beta".
 services:
-  - name: menu-semana-api
+  - name: menu-semana-api-beta
     type: web
     runtime: node
     plan: free
@@ -19,7 +24,7 @@ services:
       - key: CLIENT_URL
         sync: false
 
-  - name: menu-semana-web
+  - name: menu-semana-web-beta
     type: web
     runtime: static
     buildCommand: npm install && npm run build
@@ -31,3 +36,15 @@ services:
         sync: false
       - key: VITE_POSTHOG_HOST
         value: https://us.i.posthog.com
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Calendar, ShoppingCart, BookOpen } from 'lucide-react';
 import { storage } from './lib/storage.js';
+import { resolveHouseholdId, getHouseholdStorage, joinHousehold, leaveHousehold } from './lib/userStorage.js';
+import { signOutUser, upgradeGuestToGoogle } from './lib/auth.js';
 import { track } from './lib/analytics.js';
 import { SEED_MEALS, DAYS, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
 import { mondayOf } from './lib/dates.js';
@@ -10,6 +12,7 @@ import RecetasTab from './components/RecetasTab.jsx';
 import MealEditor from './components/MealEditor.jsx';
 import PlanWizard from './components/PlanWizard.jsx';
 import WeeksList from './components/WeeksList.jsx';
+import SharePanel from './components/SharePanel.jsx';
 
 const STORE_KEY = 'planner-v1';
 const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/cena con types)
@@ -17,7 +20,24 @@ const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/
 // Plan vacío para una semana que todavía no tiene nada guardado.
 const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {} };
 
-export default function App() {
+export default function App({ user }) {
+  // A qué hogar (households/{id}) pertenece esta cuenta — por defecto el suyo propio (su uid),
+  // salvo que se haya unido al de alguien más. Null mientras se resuelve (invitados no comparten,
+  // así que para ellos siempre es su propio uid, sin ninguna lectura extra a Firestore).
+  const [householdId, setHouseholdId] = useState(user.isAnonymous ? user.uid : null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [upgradeError, setUpgradeError] = useState(null);
+
+  useEffect(() => {
+    if (user.isAnonymous) { setHouseholdId(user.uid); return; }
+    let cancelled = false;
+    setHouseholdId(null);
+    resolveHouseholdId(user.uid).then((id) => { if (!cancelled) setHouseholdId(id); });
+    return () => { cancelled = true; };
+  }, [user.uid, user.isAnonymous]);
+
+  const userStore = useMemo(() => (householdId ? getHouseholdStorage(householdId) : null), [householdId]);
+
   const [tab, setTab] = useState('semana');
   const [meals, setMeals] = useState(null); // null = cargando
   // Cada semana (identificada por su lunes en ISO) guarda su propio plan, para que cambiar
@@ -49,11 +69,26 @@ export default function App() {
   const deleteWeek = (key) =>
     setWeeks((prev) => { const next = { ...prev }; delete next[key]; return next; });
 
-  // --- Cargar del almacenamiento (o sembrar la primera vez) ---
+  // --- Cargar de Firestore (o sembrar la primera vez) ---
   useEffect(() => {
+    if (!userStore) return; // todavía resolviendo a qué hogar pertenece esta cuenta
+    let cancelled = false;
     (async () => {
       try {
-        const r = await storage.get(STORE_KEY);
+        let r = await userStore.get(STORE_KEY);
+
+        // Documento nuevo (nunca inició sesión antes): si hay datos sueltos en el localStorage
+        // de este navegador, se suben una sola vez a su cuenta nueva. Si el documento YA existía
+        // (usuario que vuelve), nunca se toca localStorage — así no se sobreescribe algo más
+        // nuevo en la nube con algo viejo local. localStorage no se borra en ningún caso.
+        if (!r) {
+          const local = await storage.get(STORE_KEY);
+          if (local?.value) {
+            r = await userStore.set(STORE_KEY, local.value);
+          }
+        }
+
+        if (cancelled) return;
         if (r?.value) {
           const d = JSON.parse(r.value);
           const ws = d.weekStart || mondayOf();
@@ -113,20 +148,21 @@ export default function App() {
           return;
         }
       } catch { /* primera vez */ }
-      setMeals(withIds(SEED_MEALS));
+      if (!cancelled) setMeals(withIds(SEED_MEALS));
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [user.uid, userStore]);
 
-  // --- Guardar (con un pequeño debounce) ---
+  // --- Guardar en Firestore (con un pequeño debounce) ---
   useEffect(() => {
     if (meals === null) return;
     const t = setTimeout(() => {
-      storage.set(STORE_KEY, JSON.stringify({
+      userStore.set(STORE_KEY, JSON.stringify({
         schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly,
       })).catch(() => {});
     }, 300);
     return () => clearTimeout(t);
-  }, [meals, weeks, weekStart, healthyOnly]);
+  }, [meals, weeks, weekStart, healthyOnly, userStore]);
 
   const toggleBusyDay = (key) => setBusyDays((p) => ({ ...p, [key]: !p[key] }));
 
@@ -232,6 +268,33 @@ export default function App() {
         : [...prev, { ...m, id: uid() }]
     );
 
+  // Cambiar de hogar (unirse o salir) apunta userStore a otro documento — se vuelve a mostrar
+  // "Cargando…" mientras el efecto de arriba trae los datos de ese hogar.
+  const handleJoin = async (code) => {
+    await joinHousehold(code, user.uid);
+    setMeals(null);
+    setHouseholdId(code);
+    setShareOpen(false);
+  };
+  const handleLeave = async () => {
+    await leaveHousehold(user.uid);
+    setMeals(null);
+    setHouseholdId(user.uid);
+  };
+
+  const handleUpgrade = async () => {
+    setUpgradeError(null);
+    try {
+      await upgradeGuestToGoogle();
+    } catch (e) {
+      if (e.code === 'auth/credential-already-in-use') {
+        setUpgradeError('Esa cuenta de Google ya tiene su propio banco de recetas — inicia sesión normal en vez de vincular (perderás lo armado como invitado).');
+      } else if (e.code !== 'auth/popup-closed-by-user') {
+        setUpgradeError('No se pudo vincular la cuenta. Inténtalo de nuevo.');
+      }
+    }
+  };
+
   if (meals === null) {
     return <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-400">Cargando…</div>;
   }
@@ -245,10 +308,47 @@ export default function App() {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800">
       <div className="max-w-3xl mx-auto px-4 pb-24">
-        <header className="pt-6 pb-4">
-          <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">Menú de la semana</h1>
-          <p className="text-sm text-stone-500 mt-0.5">Planea, arma la lista y compra sin pensarlo dos veces.</p>
+        <header className="pt-6 pb-4 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">Menú de la semana</h1>
+            <p className="text-sm text-stone-500 mt-0.5">Planea, arma la lista y compra sin pensarlo dos veces.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {user.isAnonymous ? (
+              <>
+                <span className="text-sm text-stone-500">Modo invitado</span>
+                <button
+                  onClick={handleUpgrade}
+                  className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium"
+                >
+                  Vincular con Google
+                </button>
+              </>
+            ) : (
+              <>
+                {user.photoURL && (
+                  <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full" />
+                )}
+                <span className="text-sm text-emerald-800 hidden sm:inline">{user.displayName}</span>
+                <button
+                  onClick={() => setShareOpen(true)}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                >
+                  Compartir
+                </button>
+                <button
+                  onClick={signOutUser}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                >
+                  Cerrar sesión
+                </button>
+              </>
+            )}
+          </div>
         </header>
+        {upgradeError && (
+          <p className="-mt-2 mb-4 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2">{upgradeError}</p>
+        )}
 
         <nav className="flex gap-1 bg-white rounded-xl p-1 shadow-sm sticky top-2 z-10">
           {tabs.map(({ k, label, Icon }) => (
@@ -299,6 +399,16 @@ export default function App() {
           onSelect={(k) => { setWeekStart(k); setWeeksListOpen(false); }}
           onDelete={deleteWeek}
           onClose={() => setWeeksListOpen(false)}
+        />
+      )}
+
+      {shareOpen && (
+        <SharePanel
+          householdId={householdId}
+          isMember={householdId !== user.uid}
+          onJoin={handleJoin}
+          onLeave={handleLeave}
+          onClose={() => setShareOpen(false)}
         />
       )}
     </div>

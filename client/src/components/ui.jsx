@@ -2,6 +2,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Copy, Check } from 'lucide-react';
 
+// Cierra un modal al hacer click en el fondo oscuro — pero solo si el click "empezó y terminó"
+// ahí mismo. Sin esto, arrastrar el mouse para seleccionar texto dentro del modal y soltar el
+// botón afuera dispara un click en el fondo (el navegador lo asigna al ancestro común de donde
+// empezó y terminó el arrastre) y cierra el modal, borrando lo que se estuviera escribiendo.
+export function useBackdropClose(onClose) {
+  const downOnBackdrop = useRef(false);
+  return {
+    onMouseDown: (e) => { downOnBackdrop.current = e.target === e.currentTarget; },
+    onClick: (e) => { if (downOnBackdrop.current && e.target === e.currentTarget) onClose(); },
+  };
+}
+
 // Combobox con autocompletado: escribe para filtrar la lista, click o Enter para elegir.
 // `options` es un array plano [{value, label, group?}]; `group` agrupa visualmente en el
 // desplegable (equivalente a los <optgroup> que tenía el <select> nativo).

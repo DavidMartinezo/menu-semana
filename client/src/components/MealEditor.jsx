@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Plus, Trash2, Sparkles, Youtube, Link as LinkIcon } from 'lucide-react';
-import { Toggle, Stars } from './ui.jsx';
+import { Toggle, Stars, useBackdropClose } from './ui.jsx';
 import { extractFromText, importFromYoutube, importFromUrl } from '../lib/api.js';
 
 // Aplica una receta devuelta por el backend a los campos del formulario.
@@ -67,8 +67,10 @@ export default function MealEditor({ meal, onClose, onSave }) {
     }
   };
 
+  const backdrop = useBackdropClose(onClose);
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
       <div className="bg-stone-50 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-stone-50 border-b border-stone-200 z-10">
           <h3 className="font-semibold text-stone-800">{meal.id ? 'Editar comida' : 'Nueva comida'}</h3>

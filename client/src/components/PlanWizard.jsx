@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Wand2 } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
+import { useBackdropClose } from './ui.jsx';
 
 // Asistente de 2 pasos: qué días están ocupados, y si la semana debe ser solo saludable.
 // Al aplicar, reemplaza busyDays por la selección y dispara autofill con esos valores.
@@ -10,9 +11,10 @@ export default function PlanWizard({ busyDays, healthyOnly, onClose, onApply }) 
   const [selHealthy, setSelHealthy] = useState(!!healthyOnly);
 
   const toggleDay = (key) => setSelDays((p) => ({ ...p, [key]: !p[key] }));
+  const backdrop = useBackdropClose(onClose);
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
       <div className="bg-stone-50 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
           <h3 className="font-semibold text-stone-800 flex items-center gap-1.5"><Wand2 size={16} /> Asistente de la semana</h3>

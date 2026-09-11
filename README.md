@@ -67,6 +67,84 @@ Vite redirige automáticamente las llamadas `/api/...` al backend, así que no t
 | `VITE_API_URL`      | Solo en prod | URL del backend desplegado (ver abajo)                               |
 | `VITE_POSTHOG_KEY`  | No          | Analítica (PostHog). Sin esto, la app no manda ningún dato.           |
 | `VITE_POSTHOG_HOST` | No          | Host de tu proyecto PostHog (por defecto `https://us.i.posthog.com`) |
+| `VITE_FIREBASE_API_KEY` | Sí      | Config del proyecto de Firebase (login + datos) — ver abajo           |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Sí  | Config del proyecto de Firebase                                       |
+| `VITE_FIREBASE_PROJECT_ID` | Sí   | Config del proyecto de Firebase                                       |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Sí | Config del proyecto de Firebase                                     |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Sí | Config del proyecto de Firebase                                |
+| `VITE_FIREBASE_APP_ID` | Sí       | Config del proyecto de Firebase                                       |
+
+### Login y datos (Firebase)
+
+La app se puede usar con cuenta de Google, o **como invitado** ("Usar sin cuenta" en la pantalla
+de login) con una cuenta anónima real de Firebase — temporal, sin correo, que Firebase borra sola
+tras 30 días sin usarse. Cada cuenta tiene su propio banco de recetas y planes, guardado en
+Firestore — nada de `localStorage` compartido entre cuentas.
+
+Los datos de cada quien viven en `households/{id}` (por defecto, `id` es tu propio uid). Se pueden
+**compartir** entre dos cuentas de Google (ej. entre esposos) desde el botón "Compartir" en el
+header: uno copia su código y el otro lo pega para unirse — desde ese momento ambas cuentas ven y
+editan el mismo banco de recetas y plan, desde cualquier dispositivo, para siempre (como compartir
+una nota de Google Keep), hasta que alguna de las dos cuentas decida "Salir del hogar compartido".
+El puntero de "a qué hogar pertenezco" vive en `users/{uid}` (uno por cuenta, no por dispositivo).
+
+Pasos manuales en [Firebase Console](https://console.firebase.google.com) (no se pueden hacer desde código):
+1. **Authentication > Sign-in method** → habilitar los proveedores "Google" y "Anónimo" (para el
+   modo invitado) — en "Anónimo", dejar marcada la limpieza automática de cuentas inactivas (30 días).
+2. **Firestore Database** → crear la base (modo producción).
+3. **Firestore > Rules** → pegar:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       // Puntero de cada cuenta: siempre puede leer/escribir el suyo, nada más.
+       match /users/{uid} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+
+       match /households/{householdId} {
+         allow read, write: if isOwner(householdId) || isMember(householdId);
+         allow update: if isSelfJoin(householdId);
+         allow create: if isSelfJoinCreate(householdId);
+
+         function isOwner(id) {
+           return request.auth != null && request.auth.uid == id;
+         }
+         function isMember(id) {
+           return request.auth != null && request.auth.uid in resource.data.get('members', []);
+         }
+         function isSelfJoin(id) {
+           let before = resource.data.get('members', []);
+           let after = request.resource.data.get('members', []);
+           return request.auth != null &&
+             !(request.auth.uid in before) &&
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+             after == before.concat([request.auth.uid]);
+         }
+         function isSelfJoinCreate(id) {
+           return request.auth != null &&
+             request.auth.uid != id &&
+             request.resource.data.diff({}).affectedKeys().hasOnly(['members']) &&
+             request.resource.data.members == [request.auth.uid];
+         }
+       }
+
+       match /{document=**} {
+         allow read, write: if false;
+       }
+     }
+   }
+   ```
+   Con esto: el dueño de un hogar y quien ya esté en `members` tienen acceso total; alguien ajeno
+   solo puede agregarse a sí mismo a `members` (sin tocar nada más) — esa es la operación de
+   "unirme", sin necesitar Cloud Functions (quedan fuera del plan gratis de Firebase). Riesgo
+   aceptado a propósito: conocer el código de un hogar alcanza para unirse una vez, sin
+   aprobación — igual que "cualquiera con el link edita" en un Google Doc; suficiente para
+   compartir en familia, no pensado para un producto público.
+4. **Authentication > Settings > Authorized domains** → confirmar que están `localhost` y el
+   dominio de producción (ej. `menu-semana-web.onrender.com`).
+5. Copia la config de tu app web (**Configuración del proyecto > tus apps**) a las 6 variables
+   `VITE_FIREBASE_*` de arriba (en `client/.env` local, y en Render para producción).
 
 ---
 
@@ -124,6 +202,8 @@ despliegue es semi-automático:
      (algo como `https://menu-semana-api.onrender.com`).
    - `VITE_POSTHOG_KEY` (opcional): tu clave de proyecto de [PostHog](https://posthog.com)
      (gratis hasta 1M eventos/mes). Si la dejas vacía, la app simplemente no manda analítica.
+   - Las 6 `VITE_FIREBASE_*` (obligatorias): la config de tu proyecto de Firebase — ver la
+     sección "Login y datos (Firebase)" arriba.
 4. Si pusiste `CLIENT_URL`/`VITE_API_URL` después de que ambos servicios ya existían, hace falta un
    **Manual Deploy** en cada uno para que tomen la variable nueva.
 
@@ -134,8 +214,8 @@ código ni en el repo. El backend, con `CLIENT_URL` puesto, solo acepta peticion
 **Limitación del tier gratis:** el backend "se duerme" tras ~15 min sin tráfico y tarda unos segundos
 en responder la primera petición después de eso. Para uso familiar ocasional no se nota.
 
-Cada quien que abra la app guarda su propio plan en el `localStorage` de su navegador — no hay una
-base de datos compartida, así que cada visitante ve/edita solo lo suyo.
+Cada quien que abra la app inicia sesión (con Google o como invitado) y su plan se guarda en
+Firestore, no en el `localStorage` del navegador — ver la sección "Login y datos (Firebase)" arriba.
 
 ---
 
