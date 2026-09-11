@@ -436,6 +436,7 @@ export default function App({ user }) {
       {editing && (
         <MealEditor
           meal={editing}
+          categories={[...new Set(meals.map((m) => m.cat))].sort((a, b) => a.localeCompare(b, 'es'))}
           onClose={() => setEditing(null)}
           onSave={(m) => { saveMeal(m); setEditing(null); }}
         />

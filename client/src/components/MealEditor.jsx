@@ -28,7 +28,7 @@ const TYPE_META = [
 
 const UNITS = ['', 'unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente'];
 
-export default function MealEditor({ meal, onClose, onSave }) {
+export default function MealEditor({ meal, categories = [], onClose, onSave }) {
   const [name, setName] = useState(meal.name);
   const [cat, setCat] = useState(meal.cat);
   const [easy, setEasy] = useState(meal.easy);
@@ -161,8 +161,11 @@ export default function MealEditor({ meal, onClose, onSave }) {
           </div>
           <div>
             <label className="text-xs text-stone-500">Categoría</label>
-            <input value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Ej. Salvadoreño"
+            <input value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Ej. Salvadoreño" list="meal-categories"
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white" />
+            <datalist id="meal-categories">
+              {categories.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </div>
           <div>
             <label className="text-xs text-stone-500">¿Cuándo se sirve? (puede ser más de uno)</label>
