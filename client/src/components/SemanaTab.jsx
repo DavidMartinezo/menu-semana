@@ -20,17 +20,24 @@ export default function SemanaTab({
 
   // Solo suma el almuerzo si se eligió a mano — mismo criterio que la lista de compras, para
   // no sumar de más cuando ese día en realidad se está aprovechando la cena de ayer.
-  const weekKcal = useMemo(() => {
+  // El promedio diario se calcula sobre los días que sí tienen algo con kcal planeado, no
+  // sobre los 7 días fijos — si solo hay 2 días planeados, el promedio real de esos días es
+  // más útil que uno artificialmente bajo por dividir entre días todavía vacíos.
+  const { weekKcal, avgDayKcal } = useMemo(() => {
     let total = 0;
+    let daysWithKcal = 0;
     for (const d of DAYS) {
       const cenaK = mealById[plan[d.key]]?.kcal;
       const bfK = mealById[bfPlan[d.key]]?.kcal;
       const lunchK = lunchPlan[d.key] ? mealById[lunchPlan[d.key]]?.kcal : null;
-      if (typeof cenaK === 'number') total += cenaK;
-      if (typeof bfK === 'number') total += bfK;
-      if (typeof lunchK === 'number') total += lunchK;
+      let dayTotal = 0;
+      if (typeof cenaK === 'number') dayTotal += cenaK;
+      if (typeof bfK === 'number') dayTotal += bfK;
+      if (typeof lunchK === 'number') dayTotal += lunchK;
+      total += dayTotal;
+      if (dayTotal > 0) daysWithKcal += 1;
     }
-    return total;
+    return { weekKcal: total, avgDayKcal: daysWithKcal > 0 ? Math.round(total / daysWithKcal) : 0 };
   }, [plan, bfPlan, lunchPlan, mealById]);
 
   const handleExportICS = () => {
@@ -51,7 +58,11 @@ export default function SemanaTab({
         <button onClick={openWeeksList} className="text-xs text-emerald-700 font-medium flex items-center gap-1 hover:underline">
           <CalendarDays size={14} /> Mis semanas
         </button>
-        {weekKcal > 0 && <span className="text-xs text-stone-400">~{weekKcal.toLocaleString('es')} kcal totales la semana</span>}
+        {weekKcal > 0 && (
+          <span className="text-xs text-stone-400">
+            ~{weekKcal.toLocaleString('es')} kcal totales la semana · ~{avgDayKcal.toLocaleString('es')} kcal/día promedio
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">

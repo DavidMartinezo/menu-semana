@@ -42,25 +42,23 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
         <Plus size={18} /> Agregar comida
       </button>
 
-      <div className="flex gap-2 mb-3">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nombre, categoría o etiqueta…"
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-200 bg-white text-sm"
-          />
-        </div>
+      <div className="relative mb-3">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por nombre, categoría o etiqueta…"
+          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-200 bg-white text-sm"
+        />
+      </div>
+
+      <div className="flex gap-2 mb-4 flex-wrap">
         <button
           onClick={() => setHealthyOnly((v) => !v)}
-          className={`px-3 rounded-xl text-sm font-medium shrink-0 ${healthyOnly ? 'bg-lime-600 text-white' : 'bg-white text-stone-500 border border-stone-200'}`}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 ${healthyOnly ? 'bg-lime-600 text-white' : 'bg-white text-stone-500 border border-stone-200'}`}
         >
           🥗 Saludables
         </button>
-      </div>
-
-      <div className="flex gap-2 mb-4">
         {Object.entries(TYPE_META).map(([t, label]) => (
           <button
             key={t}
@@ -109,7 +107,10 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
                   </div>
                 </div>
                 <button onClick={() => setEditing(m)} className="p-2 text-stone-400 hover:text-emerald-700"><Pencil size={16} /></button>
-                <button onClick={() => setMeals((p) => p.filter((x) => x.id !== m.id))} className="p-2 text-stone-400 hover:text-rose-600"><Trash2 size={16} /></button>
+                <button
+                  onClick={() => { if (confirm(`¿Eliminar "${m.name}"? No se puede deshacer.`)) setMeals((p) => p.filter((x) => x.id !== m.id)); }}
+                  className="p-2 text-stone-400 hover:text-rose-600"
+                ><Trash2 size={16} /></button>
               </div>
             ))}
           </div>

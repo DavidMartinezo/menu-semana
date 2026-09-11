@@ -40,7 +40,11 @@ export default function WeeksList({ weeks, weekStart, onSelect, onDelete, onClos
                     <ArrowRight size={16} />
                   </button>
                 )}
-                <button onClick={() => onDelete(key)} className="p-2 text-stone-400 hover:text-rose-600 rounded-lg" title="Eliminar esta semana">
+                <button
+                  onClick={() => { if (confirm('¿Eliminar esta semana? No se puede deshacer.')) onDelete(key); }}
+                  className="p-2 text-stone-400 hover:text-rose-600 rounded-lg"
+                  title="Eliminar esta semana"
+                >
                   <Trash2 size={16} />
                 </button>
               </div>
