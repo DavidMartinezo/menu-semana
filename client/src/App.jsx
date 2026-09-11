@@ -316,12 +316,19 @@ export default function App({ user }) {
           <div className="flex items-center gap-2 shrink-0">
             {user.isAnonymous ? (
               <>
-                <span className="text-sm text-stone-500">Modo invitado</span>
+                <span className="text-sm text-stone-500 hidden sm:inline">Modo invitado</span>
                 <button
                   onClick={handleUpgrade}
                   className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium"
                 >
                   Vincular con Google
+                </button>
+                <button
+                  onClick={signOutUser}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                  title="Sale del modo invitado (lo que armaste aquí no se recupera después, salvo que hayas vinculado una cuenta)"
+                >
+                  Salir
                 </button>
               </>
             ) : (
