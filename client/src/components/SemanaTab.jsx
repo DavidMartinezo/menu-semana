@@ -6,7 +6,7 @@ import { buildWeekICS, downloadICS } from '../lib/ics.js';
 import { Autocomplete, StarsDisplay } from './ui.jsx';
 
 export default function SemanaTab({
-  meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, mealById, clearWeek,
+  meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
   busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList,
 }) {
   const cenaCandidates = meals.filter((m) => m.types.includes('cena'));
@@ -69,7 +69,10 @@ export default function SemanaTab({
         {DAYS.map((d, i) => {
           const cena = mealById[plan[d.key]];
           const prevCena = i > 0 ? mealById[plan[DAYS[i - 1].key]] : null;
-          const showLeftover = prevCena && prevCena.left;
+          // Con "aprovechar cena" activado desde el Asistente, es una decisión para toda la
+          // semana — se sugiere la cena de ayer todos los días, sin importar si esa receta en
+          // particular tiene la etiqueta "rinde". Sin eso, solo se sugiere cuando sí la tiene.
+          const showLeftover = !!prevCena && (lunchReuseAll || prevCena.left);
           const busy = !!busyDays[d.key];
           const filterActive = busy && !showAllDay[d.key];
           return (

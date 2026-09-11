@@ -75,7 +75,7 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, onClo
                   >
                     <div className="font-medium">Aprovechar la cena de ayer</div>
                     <div className={`text-xs ${lunchMode === 'reuse' ? 'text-emerald-100' : 'text-stone-400'}`}>
-                      Los días con cena que rinde quedan con esa sugerencia; los demás se dejan para elegir a mano.
+                      Todos los días se sugiere la cena del día anterior, sin importar la receta — asumimos que vas a preparar suficiente para que sobre.
                     </div>
                   </button>
                   <button

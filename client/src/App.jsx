@@ -18,7 +18,7 @@ const STORE_KEY = 'planner-v1';
 const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/cena con types)
 
 // Plan vacío para una semana que todavía no tiene nada guardado.
-const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {} };
+const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {}, lunchReuseAll: false };
 
 export default function App({ user }) {
   // A qué hogar (households/{id}) pertenece esta cuenta — por defecto el suyo propio (su uid),
@@ -53,7 +53,7 @@ export default function App({ user }) {
   const [weeksListOpen, setWeeksListOpen] = useState(false);
 
   const currentWeek = weeks[weekStart] || EMPTY_WEEK;
-  const { plan, bfPlan, lunchPlan, busyDays, checked } = currentWeek;
+  const { plan, bfPlan, lunchPlan, busyDays, checked, lunchReuseAll } = currentWeek;
 
   // Escribe en la semana actualmente activa (weekStart), sin tocar las demás.
   const updateWeek = (key, updater) =>
@@ -68,6 +68,7 @@ export default function App({ user }) {
   const setLunchPlan = (u) => updateWeek('lunchPlan', u);
   const setBusyDays = (u) => updateWeek('busyDays', u);
   const setChecked = (u) => updateWeek('checked', u);
+  const setLunchReuseAll = (u) => updateWeek('lunchReuseAll', u);
 
   const deleteWeek = (key) =>
     setWeeks((prev) => { const next = { ...prev }; delete next[key]; return next; });
@@ -103,7 +104,7 @@ export default function App({ user }) {
           // Si no hay "weeks" (guardado de antes de esa feature), se arma una sola entrada con
           // el plan suelto que hubiera a nivel raíz.
           let weeksDict = d.weeks || {
-            [ws]: { plan: d.plan || {}, bfPlan: d.bfPlan || {}, busyDays: d.busyDays || {}, checked: d.checked || {} },
+            [ws]: { plan: d.plan || {}, bfPlan: d.bfPlan || {}, busyDays: d.busyDays || {}, checked: d.checked || {}, lunchReuseAll: false },
           };
 
           // Migración al banco unificado (v2): antes, el desayuno vivía aparte como puros
@@ -133,6 +134,7 @@ export default function App({ user }) {
                     Object.entries(w.bfPlan || {}).map(([day, name]) => [day, nameToId[name] || name])
                   ),
                   lunchPlan: w.lunchPlan || {},
+                  lunchReuseAll: w.lunchReuseAll || false,
                 },
               ])
             );
@@ -140,7 +142,7 @@ export default function App({ user }) {
             // Ya en v2 — de todos modos se completa lunchPlan por si una semana quedó guardada
             // sin él (ej. un guardado interrumpido a mitad de este mismo cambio).
             weeksDict = Object.fromEntries(
-              Object.entries(weeksDict).map(([key, w]) => [key, { ...w, lunchPlan: w.lunchPlan || {} }])
+              Object.entries(weeksDict).map(([key, w]) => [key, { ...w, lunchPlan: w.lunchPlan || {}, lunchReuseAll: w.lunchReuseAll || false }])
             );
           }
 
@@ -223,26 +225,18 @@ export default function App({ user }) {
     }
     if (bfPool.length) setBfPlan(fillWeek(bfPool, {})); // el desayuno no tiene noción de "ocupado"
 
-    // Almuerzo: los días con cena aprovechable (marcada "rinde para el almuerzo") se dejan
-    // vacíos cuando reuseDinner está activo — la sugerencia ya existente en SemanaTab.jsx se
-    // encarga de mostrarlo. Los demás días reciben una receta real del pool de almuerzo si
-    // fillLunch está activo, o se dejan vacíos para elegir a mano.
-    if (reuseDinner || fillLunch) {
-      const plannedCena = nextPlan || plan;
+    // Almuerzo: "aprovechar cena" es una decisión para toda la semana, no receta por receta —
+    // marca lunchReuseAll y SemanaTab.jsx sugiere la cena de ayer todos los días, sin importar
+    // si esa receta en particular tiene la etiqueta "rinde". "Generar recetas" hace lo opuesto:
+    // una receta real cada día, ignorando esa etiqueta por completo. Son excluyentes.
+    setLunchReuseAll(reuseDinner);
+    if (fillLunch) {
       const lunchPool = poolFor('almuerzo');
-      const filled = fillLunch && lunchPool.length ? fillWeek(lunchPool, {}) : {};
-      const nextLunch = {};
-      for (let i = 0; i < DAYS.length; i++) {
-        const d = DAYS[i];
-        const prevCena = i > 0 ? mealById[plannedCena[DAYS[i - 1].key]] : null;
-        if (reuseDinner && prevCena?.left) continue; // se deja vacío: la sugerencia ya cubre el día
-        if (filled[d.key]) nextLunch[d.key] = filled[d.key];
-      }
-      setLunchPlan(nextLunch);
+      if (lunchPool.length) setLunchPlan(fillWeek(lunchPool, {}));
     }
   };
 
-  const clearWeek = () => { setPlan({}); setBfPlan({}); setLunchPlan({}); setChecked({}); };
+  const clearWeek = () => { setPlan({}); setBfPlan({}); setLunchPlan({}); setChecked({}); setLunchReuseAll(false); };
 
   // --- Lista de compras agregada, agrupada por tienda; despensa aparte y sin cantidad ---
   const shopping = useMemo(() => {
@@ -430,7 +424,7 @@ export default function App({ user }) {
 
         {tab === 'semana' && (
           <SemanaTab {...{
-            meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, mealById, autofill, clearWeek,
+            meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, autofill, clearWeek,
             busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard: () => setWizardOpen(true),
             openWeeksList: () => setWeeksListOpen(true),
           }} />
