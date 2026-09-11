@@ -29,7 +29,8 @@ const TYPE_META = [
 
 const UNITS = ['', 'unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente'];
 
-export default function MealEditor({ meal, categories = [], onClose, onSave }) {
+export default function MealEditor({ meal, categories = [], stores = [], onClose, onSave }) {
+  const defaultStoreId = stores[0]?.id || 'both';
   const [name, setName] = useState(meal.name);
   const [cat, setCat] = useState(meal.cat);
   const [easy, setEasy] = useState(meal.easy);
@@ -41,7 +42,7 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
   const [videoUrl, setVideoUrl] = useState(meal.videoUrl || '');
   const [sourceUrl, setSourceUrl] = useState(meal.sourceUrl || '');
   const [steps, setSteps] = useState(meal.steps || []);
-  const [ing, setIng] = useState(meal.ing.length ? meal.ing : [{ item: '', store: 'costco', qty: null, unit: '', pantry: false }]);
+  const [ing, setIng] = useState(meal.ing.length ? meal.ing : [{ item: '', store: defaultStoreId, qty: null, unit: '', pantry: false }]);
   const [kcal, setKcal] = useState(meal.kcal ?? null);
   const [servings, setServings] = useState(meal.servings ?? null);
 
@@ -51,6 +52,7 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
   const [busy, setBusy] = useState('');   // '', 'youtube', 'url', 'text' o 'kcal'
   const [err, setErr] = useState('');
   const [kcalErr, setKcalErr] = useState('');
+  const [multiRecipes, setMultiRecipes] = useState(null); // varias recetas detectadas, sin elegir aún
 
   const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal, setServings };
   const setIngAt = (i, patch) => setIng((p) => p.map((x, j) => (j === i ? { ...x, ...patch } : x)));
@@ -59,12 +61,17 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
   const runImport = async (kind) => {
     setBusy(kind);
     setErr('');
+    setMultiRecipes(null);
     try {
-      const parsed =
-        kind === 'youtube' ? await importFromYoutube(url) :
-        kind === 'url' ? await importFromUrl(pageUrl) :
-        await extractFromText(raw);
-      applyRecipe(parsed, setters);
+      const { recipes } =
+        kind === 'youtube' ? await importFromYoutube(url, stores) :
+        kind === 'url' ? await importFromUrl(pageUrl, stores) :
+        await extractFromText(raw, stores);
+      if (recipes.length > 1) {
+        setMultiRecipes(recipes); // el contenido trae varias recetas — que el usuario elija cuál
+      } else {
+        applyRecipe(recipes[0], setters);
+      }
     } catch (e) {
       setErr(e.message || 'Algo falló. Intenta de nuevo.');
     } finally {
@@ -162,6 +169,25 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
           </div>
 
           {err && <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2">{err}</p>}
+
+          {multiRecipes && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+              <p className="text-xs font-semibold text-amber-700 mb-2">
+                Esto trae varias recetas — ¿cuál quieres importar?
+              </p>
+              <div className="space-y-1.5">
+                {multiRecipes.map((r, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { applyRecipe(r, setters); setMultiRecipes(null); }}
+                    className="w-full text-left px-3 py-2 rounded-lg bg-white border border-amber-200 text-sm text-stone-700 hover:bg-amber-100"
+                  >
+                    {r.name || `Receta ${i + 1}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Campos editables */}
           <div>
@@ -270,9 +296,8 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
                     </select>
                     <select value={g.store} onChange={(e) => setIngAt(i, { store: e.target.value })}
                       className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-stone-200 bg-white text-sm">
-                      <option value="costco">Costco</option>
-                      <option value="walmart">Walmart</option>
-                      <option value="both">Cualquiera</option>
+                      {stores.map((s) => <option key={s.id} value={s.id}>{s.label || '(sin nombre)'}</option>)}
+                      <option value="both">Cualquier tienda</option>
                     </select>
                     <label className="flex items-center gap-1 text-xs text-stone-500 shrink-0 whitespace-nowrap">
                       <input type="checkbox" checked={!!g.pantry} onChange={(e) => setIngAt(i, { pantry: e.target.checked })} />
@@ -282,7 +307,7 @@ export default function MealEditor({ meal, categories = [], onClose, onSave }) {
                 </div>
               ))}
             </div>
-            <button onClick={() => setIng((p) => [...p, { item: '', store: 'costco', qty: null, unit: '', pantry: false }])}
+            <button onClick={() => setIng((p) => [...p, { item: '', store: defaultStoreId, qty: null, unit: '', pantry: false }])}
               className="mt-2 text-sm text-emerald-700 font-medium flex items-center gap-1"><Plus size={14} /> Agregar ingrediente</button>
           </div>
 

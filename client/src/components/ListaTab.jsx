@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ShoppingCart, Check } from 'lucide-react';
-import { DAYS, STORE_META } from '../data/seed.js';
+import { DAYS, storeMeta } from '../data/seed.js';
 import { CopyBtn } from './ui.jsx';
 
-export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById }) {
+export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores }) {
   const [copied, setCopied] = useState('');
   const anyMeals = DAYS.some((d) => mealById[plan[d.key]] || mealById[bfPlan[d.key]] || mealById[lunchPlan[d.key]]);
 
@@ -24,11 +24,10 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
 
   const byStoreText = () => {
     let out = '🛒 LISTA DE COMPRAS\n';
-    for (const [store, title] of [['costco', 'COSTCO'], ['walmart', 'WALMART'], ['both', 'CUALQUIER TIENDA']]) {
-      const list = shopping[store];
-      if (!list.length) continue;
-      out += `\n— ${title} —\n`;
-      list.forEach((x) => (out += `☐ ${qtyPrefix(x)}${x.item}\n`));
+    for (const { label, items } of shopping.byStore) {
+      if (!items.length) continue;
+      out += `\n— ${label.toUpperCase()} —\n`;
+      items.forEach((x) => (out += `☐ ${qtyPrefix(x)}${x.item}\n`));
     }
     if (shopping.pantry.length) {
       out += '\n— DE DESPENSA (revisar si hay) —\n';
@@ -44,7 +43,7 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
       out += `${m.name}\n`;
       m.ing.forEach((g) => {
         const qty = typeof g.qty === 'number' ? `${g.qty}${g.unit ? ' ' + g.unit : ''} ` : '';
-        out += `  • ${qty}${g.item} (${STORE_META[g.store].label}${g.pantry ? ', despensa' : ''})\n`;
+        out += `  • ${qty}${g.item} (${storeMeta(g.store, stores).label}${g.pantry ? ', despensa' : ''})\n`;
       });
       out += '\n';
     };
@@ -61,7 +60,7 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
     return (
       <div className="mt-10 text-center text-stone-400">
         <ShoppingCart size={32} className="mx-auto mb-2 opacity-40" />
-        Elige cenas en la pestaña <span className="font-medium text-stone-500">Semana</span> y aquí aparece la lista lista para Costco y Walmart.
+        Elige cenas en la pestaña <span className="font-medium text-stone-500">Semana</span> y aquí aparece la lista lista para tus tiendas.
       </div>
     );
   }
@@ -73,14 +72,13 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
         <CopyBtn label="Copiar por receta (Keep)" active={copied === 'receta'} onClick={() => copyText(byRecipeText(), 'receta')} />
       </div>
 
-      {[['costco', 'Costco'], ['walmart', 'Walmart'], ['both', 'Cualquier tienda']].map(([store, title]) => {
-        const list = shopping[store];
-        if (!list.length) return null;
+      {shopping.byStore.map(({ id, label, cls, items }) => {
+        if (!items.length) return null;
         return (
-          <div key={store} className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className={`px-4 py-2.5 font-semibold text-sm ${STORE_META[store].cls}`}>{title} · {list.length}</div>
+          <div key={id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className={`px-4 py-2.5 font-semibold text-sm ${cls}`}>{label} · {items.length}</div>
             <ul className="divide-y divide-stone-100">
-              {list.map((x) => {
+              {items.map((x) => {
                 const on = checked[x.key];
                 return (
                   <li key={x.key} onClick={() => setChecked((c) => ({ ...c, [x.key]: !c[x.key] }))}

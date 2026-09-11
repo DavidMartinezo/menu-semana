@@ -4,7 +4,7 @@ import { storage } from './lib/storage.js';
 import { resolveHouseholdId, getHouseholdStorage, joinHousehold, leaveHousehold } from './lib/userStorage.js';
 import { signOutUser, signInWithGoogle, upgradeGuestToGoogle } from './lib/auth.js';
 import { track } from './lib/analytics.js';
-import { SEED_MEALS, DAYS, EMPTY_WEEK, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
+import { SEED_MEALS, DAYS, EMPTY_WEEK, DEFAULT_STORES, storeMeta, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
 import { mondayOf } from './lib/dates.js';
 import SemanaTab from './components/SemanaTab.jsx';
 import ListaTab from './components/ListaTab.jsx';
@@ -13,6 +13,7 @@ import MealEditor from './components/MealEditor.jsx';
 import PlanWizard from './components/PlanWizard.jsx';
 import WeeksList from './components/WeeksList.jsx';
 import SharePanel from './components/SharePanel.jsx';
+import StoresPanel from './components/StoresPanel.jsx';
 
 const STORE_KEY = 'planner-v1';
 const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/cena con types)
@@ -23,6 +24,8 @@ export default function App({ user }) {
   // invitado y unirse a un hogar directo desde el login, sin cuenta de Google — ver Login.jsx).
   const [householdId, setHouseholdId] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [storesOpen, setStoresOpen] = useState(false);
+  const [stores, setStores] = useState(DEFAULT_STORES); // preferencia del hogar, no por semana
   const [upgradeError, setUpgradeError] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
@@ -147,6 +150,7 @@ export default function App({ user }) {
           setWeeks(weeksDict);
           setWeekStart(ws);
           setHealthyOnly(d.healthyOnly || false);
+          setStores(d.stores?.length ? d.stores : DEFAULT_STORES);
           return;
         }
       } catch { /* primera vez */ }
@@ -160,11 +164,11 @@ export default function App({ user }) {
     if (meals === null) return;
     const t = setTimeout(() => {
       userStore.set(STORE_KEY, JSON.stringify({
-        schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly,
+        schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly, stores,
       })).catch(() => {});
     }, 300);
     return () => clearTimeout(t);
-  }, [meals, weeks, weekStart, healthyOnly, userStore]);
+  }, [meals, weeks, weekStart, healthyOnly, stores, userStore]);
 
   const toggleBusyDay = (key) => setBusyDays((p) => ({ ...p, [key]: !p[key] }));
 
@@ -237,7 +241,8 @@ export default function App({ user }) {
 
   // --- Lista de compras agregada, agrupada por tienda; despensa aparte y sin cantidad ---
   const shopping = useMemo(() => {
-    const groups = { costco: {}, walmart: {}, both: {} };
+    const allStoreIds = [...stores.map((s) => s.id), 'both'];
+    const groups = Object.fromEntries(allStoreIds.map((id) => [id, {}]));
     const pantry = {};
     const addMealIngredients = (m) => {
       if (!m) return;
@@ -276,12 +281,10 @@ export default function App({ user }) {
     }
     const toList = (o) => Object.values(o).sort((a, b) => a.item.localeCompare(b.item));
     return {
-      costco: toList(groups.costco),
-      walmart: toList(groups.walmart),
-      both: toList(groups.both),
+      byStore: allStoreIds.map((id) => ({ id, ...storeMeta(id, stores), items: toList(groups[id]) })),
       pantry: toList(pantry),
     };
-  }, [plan, bfPlan, lunchPlan, mealById]);
+  }, [plan, bfPlan, lunchPlan, mealById, stores]);
 
   const saveMeal = (m) =>
     setMeals((prev) =>
@@ -388,6 +391,12 @@ export default function App({ user }) {
                 )}
                 <span className="text-sm text-emerald-800 hidden sm:inline">{user.displayName}</span>
                 <button
+                  onClick={() => setStoresOpen(true)}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                >
+                  Tiendas
+                </button>
+                <button
                   onClick={() => setShareOpen(true)}
                   className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
                 >
@@ -433,7 +442,7 @@ export default function App({ user }) {
             openWeeksList: () => setWeeksListOpen(true),
           }} />
         )}
-        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById }} />}
+        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores }} />}
         {tab === 'recetas' && <RecetasTab {...{ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }} />}
       </div>
 
@@ -441,8 +450,17 @@ export default function App({ user }) {
         <MealEditor
           meal={editing}
           categories={[...new Set(meals.map((m) => m.cat))].sort((a, b) => a.localeCompare(b, 'es'))}
+          stores={stores}
           onClose={() => setEditing(null)}
           onSave={(m) => { saveMeal(m); setEditing(null); }}
+        />
+      )}
+
+      {storesOpen && (
+        <StoresPanel
+          stores={stores}
+          setStores={setStores}
+          onClose={() => setStoresOpen(false)}
         />
       )}
 

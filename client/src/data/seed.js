@@ -79,11 +79,37 @@ export const DAYS = [
 // agregar un campo nuevo a la semana arreglaba uno y dejaba el otro incompleto en silencio.
 export const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {}, lunchReuseAll: false };
 
+// Tiendas por defecto para hogares nuevos (o ya existentes, antes de que esto fuera
+// configurable) — el usuario las puede renombrar, borrar o agregar más desde "Tiendas".
+export const DEFAULT_STORES = [
+  { id: 'costco', label: 'Costco' },
+  { id: 'walmart', label: 'Walmart' },
+];
+
+// Solo para el id reservado "cualquier tienda" — las demás tiendas son configurables por
+// hogar (ver `stores` en App.jsx) y no tienen un label/color fijo en código.
 export const STORE_META = {
-  costco: { label: 'Costco', cls: 'bg-rose-100 text-rose-700' },
-  walmart: { label: 'Walmart', cls: 'bg-sky-100 text-sky-700' },
-  both: { label: 'Cualquiera', cls: 'bg-stone-200 text-stone-600' },
+  both: { label: 'Cualquier tienda', cls: 'bg-stone-200 text-stone-600' },
 };
+
+// Colores que se reparten por índice entre las tiendas configuradas del hogar, para que cada
+// una se vea distinta en la lista de compras sin que el usuario tenga que elegir un color.
+const STORE_COLORS = [
+  'bg-rose-100 text-rose-700',
+  'bg-sky-100 text-sky-700',
+  'bg-amber-100 text-amber-700',
+  'bg-violet-100 text-violet-700',
+  'bg-teal-100 text-teal-700',
+];
+
+// Label + clase de color para cualquier id de tienda: busca en la lista de tiendas del hogar,
+// cae en "Cualquier tienda" para el id reservado o para un id que ya no existe (tienda borrada
+// después de que una receta ya la usaba).
+export function storeMeta(id, stores) {
+  const idx = (stores || []).findIndex((s) => s.id === id);
+  if (idx === -1) return STORE_META.both;
+  return { label: stores[idx].label, cls: STORE_COLORS[idx % STORE_COLORS.length] };
+}
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
 

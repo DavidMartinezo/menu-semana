@@ -16,14 +16,17 @@ async function post(path, body) {
   return res.json();
 }
 
+// `stores` es la lista de tiendas del hogar ([{id, label}]) — se manda para que la IA reparta
+// los ingredientes usando las tiendas reales en vez de asumir Costco/Walmart.
+
 // Texto de receta pegado a mano -> receta estructurada.
-export const extractFromText = (text) => post('/api/extract', { text });
+export const extractFromText = (text, stores) => post('/api/extract', { text, stores });
 
 // URL de YouTube -> receta estructurada.
-export const importFromYoutube = (url) => post('/api/import-youtube', { url });
+export const importFromYoutube = (url, stores) => post('/api/import-youtube', { url, stores });
 
 // URL de página web (blog de cocina, etc.) -> receta estructurada.
-export const importFromUrl = (url) => post('/api/import-url', { url });
+export const importFromUrl = (url, stores) => post('/api/import-url', { url, stores });
 
 // Ingredientes ya estructurados de una receta existente -> { kcal, servings }.
 export const estimateKcal = ({ name, ing, steps }) => post('/api/estimate-kcal', { name, ing, steps });

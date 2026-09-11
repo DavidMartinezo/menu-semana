@@ -1,15 +1,30 @@
 // Construye el prompt de extracción y parsea la respuesta de la IA a un objeto de receta.
 
-export function buildPrompt(source) {
-  return `Extrae la receta de este contenido para una familia que compra en Costco y Walmart.
+// Tiendas por defecto si el cliente no manda las suyas (compatibilidad con llamadas viejas).
+export const DEFAULT_STORES = [
+  { id: 'costco', label: 'Costco' },
+  { id: 'walmart', label: 'Walmart' },
+];
+
+export function buildPrompt(source, stores) {
+  const list = Array.isArray(stores) && stores.length ? stores : DEFAULT_STORES;
+  const storeNames = list.map((s) => s.label).join(' y ');
+  const storeExample = list[0]?.id || 'both';
+  const storeIdsList = list.map((s) => `"${s.id}" = ${s.label}`).join(', ');
+
+  return `Extrae la(s) receta(s) de este contenido para una familia que compra en ${storeNames}.
 
 Devuelve SOLO JSON válido (sin markdown, sin texto extra) con esta forma exacta:
-{"name":"...","cat":"...","easy":true,"left":true,"types":["cena"],"kcal":650,"servings":4,"steps":["..."],"ing":[{"item":"...","store":"costco","qty":2,"unit":"unidad","pantry":false}]}
+{"recipes":[{"name":"...","cat":"...","easy":true,"left":true,"types":["cena"],"kcal":650,"servings":4,"steps":["..."],"ing":[{"item":"...","store":"${storeExample}","qty":2,"unit":"unidad","pantry":false}]}]}
 
 Reglas:
-- "store" es "costco", "walmart" o "both".
-- costco: proteínas a granel, arroz, quesos, papas, vegetales a granel, aceite, huevos.
-- walmart: especias, hierbas frescas, verduras sueltas, salsas específicas, pan, productos regionales.
+- "recipes" es un arreglo: casi siempre tiene un solo elemento, PERO si el contenido describe
+  claramente varias recetas distintas (ej. un video "5 recetas mediterráneas" con una receta
+  completa por segmento/capítulo), incluye cada una como su propio elemento del arreglo, en el
+  orden en que aparecen. No dividas una sola receta en partes — solo cuando de verdad son
+  recetas independientes.
+- "store" es el id de la tienda donde más comúnmente se compraría ese ingrediente, de esta
+  lista: ${storeIdsList}. Si no estás seguro o se consigue en cualquiera de ellas, usa "both".
 - "easy": true si se cocina en menos de 30 min o pocos pasos.
 - "left": true si rinde como sobras para el almuerzo del día siguiente.
 - "types": arreglo con cualquier combinación de "desayuno", "almuerzo", "cena" — cuándo se sirve.
@@ -61,16 +76,7 @@ function normalizeUnit(raw) {
   return UNIT_ALIASES[lower] || u;
 }
 
-// La IA a veces envuelve el JSON en ```json ... ```; lo limpiamos y recortamos al objeto.
-export function parseRecipe(text) {
-  const clean = text.replace(/```json|```/g, '').trim();
-  const start = clean.indexOf('{');
-  const end = clean.lastIndexOf('}');
-  if (start === -1 || end === -1) {
-    throw new Error('La IA no devolvió un JSON válido.');
-  }
-  const parsed = JSON.parse(clean.slice(start, end + 1));
-
+function normalizeOneRecipe(parsed, validStoreIds) {
   return {
     name: parsed.name || '',
     cat: parsed.cat || 'Otros',
@@ -88,13 +94,31 @@ export function parseRecipe(text) {
           .filter((g) => g && g.item)
           .map((g) => ({
             item: g.item,
-            store: ['costco', 'walmart', 'both'].includes(g.store) ? g.store : 'costco',
+            store: validStoreIds.has(g.store) ? g.store : 'both',
             qty: typeof g.qty === 'number' && !Number.isNaN(g.qty) ? g.qty : null,
             unit: normalizeUnit(g.unit),
             pantry: !!g.pantry,
           }))
       : [],
   };
+}
+
+// La IA a veces envuelve el JSON en ```json ... ```; lo limpiamos y recortamos al objeto.
+// Devuelve SIEMPRE un arreglo (de 1 elemento en el caso normal de "una sola receta") — ver la
+// regla de "recipes" en buildPrompt para cuándo trae más de uno.
+export function parseRecipes(text, stores) {
+  const validStoreIds = new Set([...(Array.isArray(stores) && stores.length ? stores : DEFAULT_STORES).map((s) => s.id), 'both']);
+  const clean = text.replace(/```json|```/g, '').trim();
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+  if (start === -1 || end === -1) {
+    throw new Error('La IA no devolvió un JSON válido.');
+  }
+  const parsed = JSON.parse(clean.slice(start, end + 1));
+
+  // Respaldo por si la IA ignora el envoltorio "recipes" y devuelve la receta suelta como antes.
+  const list = Array.isArray(parsed.recipes) && parsed.recipes.length ? parsed.recipes : [parsed];
+  return list.map((r) => normalizeOneRecipe(r, validStoreIds));
 }
 
 // Para recetas que ya existen (banco base, o creadas/editadas a mano) y no pasaron por el
