@@ -118,7 +118,16 @@ export function parseRecipes(text, stores) {
 
   // Respaldo por si la IA ignora el envoltorio "recipes" y devuelve la receta suelta como antes.
   const list = Array.isArray(parsed.recipes) && parsed.recipes.length ? parsed.recipes : [parsed];
-  return list.map((r) => normalizeOneRecipe(r, validStoreIds));
+  const normalized = list.map((r) => normalizeOneRecipe(r, validStoreIds));
+
+  // Si el contenido no traía suficiente información (video/página sin receta real, o la
+  // transcripción automática falló en silencio), la IA a veces devuelve un JSON "vacío" con
+  // éxito en vez de fallar — sin esto, el formulario se queda en blanco sin explicar por qué.
+  const usable = normalized.filter((r) => r.name || r.ing.length);
+  if (!usable.length) {
+    throw new Error('No se pudo sacar una receta de ese contenido. Copia el texto de la receta a mano y usa "Extraer con IA".');
+  }
+  return usable;
 }
 
 // Para recetas que ya existen (banco base, o creadas/editadas a mano) y no pasaron por el
