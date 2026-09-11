@@ -22,15 +22,14 @@ const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked:
 
 export default function App({ user }) {
   // A qué hogar (households/{id}) pertenece esta cuenta — por defecto el suyo propio (su uid),
-  // salvo que se haya unido al de alguien más. Null mientras se resuelve (invitados no comparten,
-  // así que para ellos siempre es su propio uid, sin ninguna lectura extra a Firestore).
-  const [householdId, setHouseholdId] = useState(user.isAnonymous ? user.uid : null);
+  // salvo que se haya unido al de alguien más (incluye invitados: alguien puede entrar como
+  // invitado y unirse a un hogar directo desde el login, sin cuenta de Google — ver Login.jsx).
+  const [householdId, setHouseholdId] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [upgradeError, setUpgradeError] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
-    if (user.isAnonymous) { setHouseholdId(user.uid); return; }
     let cancelled = false;
     setHouseholdId(null);
     setLoadError(null);
@@ -38,7 +37,7 @@ export default function App({ user }) {
       .then((id) => { if (!cancelled) setHouseholdId(id); })
       .catch((e) => { if (!cancelled) setLoadError(e.message || String(e)); });
     return () => { cancelled = true; };
-  }, [user.uid, user.isAnonymous]);
+  }, [user.uid]);
 
   const userStore = useMemo(() => (householdId ? getHouseholdStorage(householdId) : null), [householdId]);
 

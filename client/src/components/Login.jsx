@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { signInWithGoogle, signInAsGuest } from '../lib/auth.js';
+import { joinHousehold } from '../lib/userStorage.js';
 import { track } from '../lib/analytics.js';
 
 function mapAuthError(code) {
@@ -26,6 +27,10 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingGuest, setLoadingGuest] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [loadingJoin, setLoadingJoin] = useState(false);
+  const busy = loading || loadingGuest || loadingJoin;
 
   const handleClick = async () => {
     setError(null);
@@ -54,6 +59,24 @@ export default function Login() {
     }
   };
 
+  // Entra como invitado (misma cuenta anónima temporal) y de una la une al hogar del código —
+  // para alguien sin cuenta de Google que solo quiere ver/editar lo que ya comparte otra persona.
+  const handleJoinWithCode = async () => {
+    const code = joinCode.trim();
+    if (!code) return;
+    setError(null);
+    setLoadingJoin(true);
+    try {
+      const cred = await signInAsGuest();
+      await joinHousehold(code, cred.user.uid);
+      track('guest_start', { joined_with_code: true });
+    } catch (e) {
+      setError(mapAuthError(e.code));
+    } finally {
+      setLoadingJoin(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm p-8 max-w-sm w-full text-center">
@@ -61,7 +84,7 @@ export default function Login() {
         <p className="text-sm text-stone-500 mt-2 mb-6">Inicia sesión para ver tus recetas y tu plan.</p>
         <button
           onClick={handleClick}
-          disabled={loading || loadingGuest}
+          disabled={busy}
           className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-stone-50 disabled:opacity-50 text-stone-700 font-semibold py-3 rounded-xl shadow-sm border border-stone-200"
         >
           {!loading && <GoogleIcon />}
@@ -69,12 +92,37 @@ export default function Login() {
         </button>
         <button
           onClick={handleGuest}
-          disabled={loading || loadingGuest}
+          disabled={busy}
           className="w-full mt-3 bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-600 font-medium py-2.5 rounded-xl"
         >
           {loadingGuest ? 'Conectando…' : 'Usar sin cuenta'}
         </button>
         <p className="text-xs text-stone-400 mt-2">Como invitado nada se pierde en tu navegador, pero no lo ves desde otro dispositivo.</p>
+
+        {!joinOpen ? (
+          <button onClick={() => setJoinOpen(true)} className="w-full mt-3 text-xs text-stone-400 hover:text-stone-600 underline">
+            ¿Tienes un código para unirte a un hogar compartido?
+          </button>
+        ) : (
+          <div className="mt-3 text-left">
+            <div className="flex items-center gap-2">
+              <input
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="Pega el código aquí"
+                className="flex-1 px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+              <button
+                onClick={handleJoinWithCode}
+                disabled={busy || !joinCode.trim()}
+                className="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white text-sm font-medium"
+              >
+                {loadingJoin ? '…' : 'Unirme'}
+              </button>
+            </div>
+            <p className="text-xs text-stone-400 mt-1.5">Entra como invitado, ya unido a esos datos — misma limitación: no se ve desde otro dispositivo sin volver a pegar el código.</p>
+          </div>
+        )}
         {error && <p className="mt-4 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2">{error}</p>}
       </div>
     </div>
