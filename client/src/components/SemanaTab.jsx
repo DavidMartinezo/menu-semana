@@ -37,30 +37,32 @@ export default function SemanaTab({
         </button>
       </div>
 
-      <button
-        onClick={openWizard}
-        className="w-full sm:max-w-xs flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition mb-3"
-      >
-        <Shuffle size={18} /> Sorpréndeme
-      </button>
-
-      <div className="flex gap-4 mb-4 px-0.5">
-        <button onClick={clearWeek} className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600">
-          <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
-            <Trash2 size={15} />
-          </span>
-          <span className="text-[10px]">Limpiar</span>
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <button
-          onClick={handleExportICS}
-          disabled={!hasAnyPlan}
-          className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={openWizard}
+          className="w-full sm:w-auto sm:max-w-xs flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition"
         >
-          <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
-            <CalendarPlus size={15} />
-          </span>
-          <span className="text-[10px]">Calendario</span>
+          <Shuffle size={18} /> Sorpréndeme
         </button>
+
+        <div className="flex gap-4 px-0.5">
+          <button onClick={clearWeek} className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600">
+            <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
+              <Trash2 size={15} />
+            </span>
+            <span className="text-[10px]">Limpiar</span>
+          </button>
+          <button
+            onClick={handleExportICS}
+            disabled={!hasAnyPlan}
+            className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
+              <CalendarPlus size={15} />
+            </span>
+            <span className="text-[10px]">Calendario</span>
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
