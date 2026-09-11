@@ -40,7 +40,7 @@ export default function SemanaTab({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <button
           onClick={openWizard}
-          className="w-full sm:w-auto sm:max-w-xs flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition"
+          className="w-full sm:w-64 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition"
         >
           <Shuffle size={18} /> Sorpréndeme
         </button>
