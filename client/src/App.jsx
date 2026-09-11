@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Calendar, ShoppingCart, BookOpen } from 'lucide-react';
 import { storage } from './lib/storage.js';
 import { resolveHouseholdId, getHouseholdStorage, joinHousehold, leaveHousehold } from './lib/userStorage.js';
-import { signOutUser, upgradeGuestToGoogle } from './lib/auth.js';
+import { signOutUser, signInWithGoogle, upgradeGuestToGoogle } from './lib/auth.js';
 import { track } from './lib/analytics.js';
 import { SEED_MEALS, DAYS, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
 import { mondayOf } from './lib/dates.js';
@@ -288,9 +288,25 @@ export default function App({ user }) {
       await upgradeGuestToGoogle();
     } catch (e) {
       if (e.code === 'auth/credential-already-in-use') {
-        setUpgradeError('Esa cuenta de Google ya tiene su propio banco de recetas — inicia sesión normal en vez de vincular (perderás lo armado como invitado).');
+        setUpgradeError({
+          message: 'Esa cuenta de Google ya tiene su propio banco de recetas — inicia sesión normal en vez de vincular (perderás lo armado como invitado).',
+          conflict: true,
+        });
       } else if (e.code !== 'auth/popup-closed-by-user') {
-        setUpgradeError('No se pudo vincular la cuenta. Inténtalo de nuevo.');
+        setUpgradeError({ message: 'No se pudo vincular la cuenta. Inténtalo de nuevo.', conflict: false });
+      }
+    }
+  };
+
+  // Desde el mensaje de "esa cuenta ya tiene datos propios" — entra normal con esa cuenta en
+  // vez de obligar a pasar primero por "Salir" y la pantalla de login.
+  const handleUseGoogleAccount = async () => {
+    setUpgradeError(null);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      if (e.code !== 'auth/popup-closed-by-user') {
+        setUpgradeError({ message: 'No se pudo iniciar sesión. Inténtalo de nuevo.', conflict: false });
       }
     }
   };
@@ -354,7 +370,17 @@ export default function App({ user }) {
           </div>
         </header>
         {upgradeError && (
-          <p className="-mt-2 mb-4 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2">{upgradeError}</p>
+          <div className="-mt-2 mb-4 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2">
+            <p>{upgradeError.message}</p>
+            {upgradeError.conflict && (
+              <button
+                onClick={handleUseGoogleAccount}
+                className="mt-2 text-sm px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium"
+              >
+                Iniciar sesión con esa cuenta
+              </button>
+            )}
+          </div>
         )}
 
         <nav className="flex gap-1 bg-white rounded-xl p-1 shadow-sm sticky top-2 z-10">
