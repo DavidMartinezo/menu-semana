@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shuffle, Clock, Wand2, Youtube, CalendarDays, CalendarPlus } from 'lucide-react';
+import { Shuffle, Clock, Wand2, Youtube, CalendarDays, CalendarPlus, Trash2 } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
 import { buildWeekICS, downloadICS } from '../lib/ics.js';
@@ -37,20 +37,35 @@ export default function SemanaTab({
         </button>
       </div>
 
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <button onClick={() => autofill()} className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition">
+      <div className="flex rounded-xl shadow-sm overflow-hidden mb-3">
+        <button onClick={() => autofill()} className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 transition">
           <Shuffle size={18} /> Sorpréndeme
         </button>
-        <button onClick={openWizard} className="px-4 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm text-sm font-medium flex items-center gap-1.5">
-          <Wand2 size={16} /> Asistente
+        <button
+          onClick={openWizard}
+          title="Configurar antes de llenar (días ocupados, modo saludable)"
+          className="w-11 flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white border-l border-white/25"
+        >
+          <Wand2 size={16} />
         </button>
-        <button onClick={clearWeek} className="px-4 bg-white text-stone-500 hover:text-stone-700 rounded-xl shadow-sm text-sm font-medium">Limpiar</button>
+      </div>
+
+      <div className="flex gap-4 mb-4 px-0.5">
+        <button onClick={clearWeek} className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600">
+          <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
+            <Trash2 size={15} />
+          </span>
+          <span className="text-[10px]">Limpiar</span>
+        </button>
         <button
           onClick={handleExportICS}
           disabled={!hasAnyPlan}
-          className="px-4 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm text-sm font-medium flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <CalendarPlus size={16} /> Agregar al calendario
+          <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
+            <CalendarPlus size={15} />
+          </span>
+          <span className="text-[10px]">Calendario</span>
         </button>
       </div>
 
