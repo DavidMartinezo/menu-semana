@@ -81,10 +81,9 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
             <div className={`px-4 py-2.5 font-semibold text-sm ${STORE_META[store].cls}`}>{title} · {list.length}</div>
             <ul className="divide-y divide-stone-100">
               {list.map((x) => {
-                const key = store + ':' + x.item + ':' + x.unit;
-                const on = checked[key];
+                const on = checked[x.key];
                 return (
-                  <li key={key} onClick={() => setChecked((c) => ({ ...c, [key]: !c[key] }))}
+                  <li key={x.key} onClick={() => setChecked((c) => ({ ...c, [x.key]: !c[x.key] }))}
                     className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">
                     <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}>
                       {on && <Check size={14} className="text-white" />}
@@ -107,10 +106,9 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
           <div className="px-4 py-2.5 font-semibold text-sm bg-stone-100 text-stone-500">De despensa (revisar si hay) · {shopping.pantry.length}</div>
           <ul className="divide-y divide-stone-100">
             {shopping.pantry.map((x) => {
-              const key = 'pantry:' + x.item;
-              const on = checked[key];
+              const on = checked[x.key];
               return (
-                <li key={key} onClick={() => setChecked((c) => ({ ...c, [key]: !c[key] }))}
+                <li key={x.key} onClick={() => setChecked((c) => ({ ...c, [x.key]: !c[x.key] }))}
                   className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">
                   <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}>
                     {on && <Check size={14} className="text-white" />}

@@ -74,6 +74,11 @@ export const DAYS = [
   { key: 'dom', label: 'Domingo' },
 ];
 
+// Forma de una semana sin nada planeado. Vive acá (y no en App.jsx) porque WeeksList.jsx
+// también la necesita para la semana activa todavía sin guardar: con una copia en cada archivo,
+// agregar un campo nuevo a la semana arreglaba uno y dejaba el otro incompleto en silencio.
+export const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {}, lunchReuseAll: false };
+
 export const STORE_META = {
   costco: { label: 'Costco', cls: 'bg-rose-100 text-rose-700' },
   walmart: { label: 'Walmart', cls: 'bg-sky-100 text-sky-700' },

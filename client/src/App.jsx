@@ -4,7 +4,7 @@ import { storage } from './lib/storage.js';
 import { resolveHouseholdId, getHouseholdStorage, joinHousehold, leaveHousehold } from './lib/userStorage.js';
 import { signOutUser, signInWithGoogle, upgradeGuestToGoogle } from './lib/auth.js';
 import { track } from './lib/analytics.js';
-import { SEED_MEALS, DAYS, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
+import { SEED_MEALS, DAYS, EMPTY_WEEK, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
 import { mondayOf } from './lib/dates.js';
 import SemanaTab from './components/SemanaTab.jsx';
 import ListaTab from './components/ListaTab.jsx';
@@ -16,9 +16,6 @@ import SharePanel from './components/SharePanel.jsx';
 
 const STORE_KEY = 'planner-v1';
 const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/cena con types)
-
-// Plan vacío para una semana que todavía no tiene nada guardado.
-const EMPTY_WEEK = { plan: {}, bfPlan: {}, lunchPlan: {}, busyDays: {}, checked: {}, lunchReuseAll: false };
 
 export default function App({ user }) {
   // A qué hogar (households/{id}) pertenece esta cuenta — por defecto el suyo propio (su uid),
@@ -247,15 +244,22 @@ export default function App({ user }) {
       for (const g of m.ing) {
         const itemKey = g.item.toLowerCase().trim();
         if (g.pantry) {
-          if (!pantry[itemKey]) pantry[itemKey] = { item: g.item, from: [] };
+          if (!pantry[itemKey]) pantry[itemKey] = { key: `pantry:${itemKey}`, item: g.item, from: [] };
           if (!pantry[itemKey].from.includes(m.name)) pantry[itemKey].from.push(m.name);
           continue;
         }
-        const bucket = groups[g.store] || groups.both;
+        // `store` inválido cae en "both": hay que resolverlo antes de armar la clave, para que
+        // la clave no diga una tienda distinta de la lista donde realmente quedó el ingrediente.
+        const storeKey = groups[g.store] ? g.store : 'both';
+        const bucket = groups[storeKey];
         // se agrupa por item+unidad: cantidades con la misma unidad se suman entre recetas.
         const unitKey = (g.unit || '').toLowerCase().trim();
         const groupKey = `${itemKey}|${unitKey}`;
-        if (!bucket[groupKey]) bucket[groupKey] = { item: g.item, qty: 0, hasQty: false, unit: g.unit || '', from: [] };
+        // `key` se arma con los valores normalizados (los mismos que agrupan), no con `item`/`unit`
+        // tal como se escribieron: esos guardan la mayúscula de la PRIMERA receta que aportó el
+        // ingrediente, así que cambiar qué receta va primero renombraba la clave y ListaTab perdía
+        // el palomeado de un ingrediente que en realidad es el mismo.
+        if (!bucket[groupKey]) bucket[groupKey] = { key: `${storeKey}:${groupKey}`, item: g.item, qty: 0, hasQty: false, unit: g.unit || '', from: [] };
         if (typeof g.qty === 'number') {
           bucket[groupKey].qty += g.qty;
           bucket[groupKey].hasQty = true;
@@ -424,7 +428,7 @@ export default function App({ user }) {
 
         {tab === 'semana' && (
           <SemanaTab {...{
-            meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, autofill, clearWeek,
+            meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
             busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard: () => setWizardOpen(true),
             openWeeksList: () => setWeeksListOpen(true),
           }} />

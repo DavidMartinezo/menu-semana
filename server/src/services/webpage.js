@@ -154,7 +154,15 @@ async function fetchValidated(startUrl, fetchImpl = fetch) {
 }
 
 export async function getRecipeTextFromUrl(rawUrl, fetchImpl = fetch) {
-  const url = new URL(rawUrl);
+  // new URL() lanza un TypeError con mensaje en inglés ("Invalid URL"), y la ruta devuelve
+  // e.message tal cual al cliente — así que se traduce acá al mismo mensaje que usa el resto
+  // del archivo para una URL que no se puede aceptar.
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error('Esa URL no es válida.');
+  }
   const res = await fetchValidated(url, fetchImpl);
 
   const html = (await res.text()).slice(0, MAX_HTML_CHARS);
