@@ -3,7 +3,7 @@ import { Shuffle, Clock, Youtube, CalendarDays, CalendarPlus, Trash2 } from 'luc
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
 import { buildWeekICS, downloadICS } from '../lib/ics.js';
-import { Autocomplete, StarsDisplay } from './ui.jsx';
+import { Autocomplete, StarsDisplay, ConfirmDialog } from './ui.jsx';
 
 export default function SemanaTab({
   meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
@@ -15,6 +15,7 @@ export default function SemanaTab({
   const easyMeals = cenaCandidates.filter((m) => m.easy);
   const otherMeals = cenaCandidates.filter((m) => !m.easy);
   const [showAllDay, setShowAllDay] = useState({}); // day.key -> true si se saltó el filtro de "ocupado"
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const hasAnyPlan = DAYS.some((d) => plan[d.key] || bfPlan[d.key] || lunchPlan[d.key]);
 
@@ -75,7 +76,7 @@ export default function SemanaTab({
 
         <div className="flex gap-4 px-0.5">
           <button
-            onClick={() => { if (!hasAnyPlan || confirm('¿Vaciar toda la semana? No se puede deshacer.')) clearWeek(); }}
+            onClick={() => { if (hasAnyPlan) setConfirmClear(true); else clearWeek(); }}
             className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600"
           >
             <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
@@ -201,6 +202,16 @@ export default function SemanaTab({
           );
         })}
       </div>
+
+      {confirmClear && (
+        <ConfirmDialog
+          title="Vaciar semana"
+          message="¿Vaciar toda la semana? No se puede deshacer."
+          confirmLabel="Vaciar"
+          onConfirm={() => { clearWeek(); setConfirmClear(false); }}
+          onCancel={() => setConfirmClear(false)}
+        />
+      )}
     </div>
   );
 }

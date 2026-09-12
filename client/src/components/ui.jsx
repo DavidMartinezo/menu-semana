@@ -14,6 +14,33 @@ export function useBackdropClose(onClose) {
   };
 }
 
+// Confirmación propia para acciones que no se pueden deshacer — en vez del confirm() nativo
+// del navegador, que sale con el dominio, en inglés, y sin nada del estilo de la app.
+export function ConfirmDialog({ title = 'Confirmar', message, confirmLabel = 'Confirmar', danger = true, onConfirm, onCancel }) {
+  const backdrop = useBackdropClose(onCancel);
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-30 p-0 sm:p-4" {...backdrop}>
+      <div className="bg-stone-50 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="p-5">
+          <h3 className="font-semibold text-stone-800 mb-1.5">{title}</h3>
+          <p className="text-sm text-stone-600">{message}</p>
+        </div>
+        <div className="p-4 pt-0 flex gap-2">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-stone-600 bg-white border border-stone-200">
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white ${danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Combobox con autocompletado: escribe para filtrar la lista, click o Enter para elegir.
 // `options` es un array plano [{value, label, group?}]; `group` agrupa visualmente en el
 // desplegable (equivalente a los <optgroup> que tenía el <select> nativo).

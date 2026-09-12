@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Wand2 } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
-import { useBackdropClose } from './ui.jsx';
+import { useBackdropClose, ConfirmDialog } from './ui.jsx';
 
 // Asistente de 2 pasos: qué días están ocupados, y si la semana debe ser solo saludable.
 // Al aplicar, reemplaza busyDays por la selección y dispara autofill con esos valores.
@@ -13,9 +13,17 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, hasAn
   // 'generate' = una receta de almuerzo real todos los días, sin depender de la cena anterior.
   // Son excluyentes — no tiene sentido combinarlas para la semana completa.
   const [lunchMode, setLunchMode] = useState('reuse');
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
 
   const toggleDay = (key) => setSelDays((p) => ({ ...p, [key]: !p[key] }));
   const backdrop = useBackdropClose(onClose);
+
+  const doApply = () => onApply({
+    busyDays: selDays,
+    healthyOnly: selHealthy,
+    reuseDinner: lunchMode === 'reuse',
+    fillLunch: lunchMode === 'generate' && lunchPoolSize > 0,
+  });
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
@@ -108,15 +116,7 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, hasAn
             </button>
           ) : (
             <button
-              onClick={() => {
-                if (hasAnyPlan && !confirm('Ya tienes esta semana planeada — esto va a reemplazar las cenas, desayunos y almuerzos generados. ¿Seguro que quieres continuar?')) return;
-                onApply({
-                  busyDays: selDays,
-                  healthyOnly: selHealthy,
-                  reuseDinner: lunchMode === 'reuse',
-                  fillLunch: lunchMode === 'generate' && lunchPoolSize > 0,
-                });
-              }}
+              onClick={() => { if (hasAnyPlan) setConfirmOverwrite(true); else doApply(); }}
               className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl"
             >
               Armar semana
@@ -124,6 +124,16 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, hasAn
           )}
         </div>
       </div>
+
+      {confirmOverwrite && (
+        <ConfirmDialog
+          title="Reemplazar semana"
+          message="Ya tienes esta semana planeada — esto va a reemplazar las cenas, desayunos y almuerzos generados. ¿Seguro que quieres continuar?"
+          confirmLabel="Reemplazar"
+          onConfirm={() => { setConfirmOverwrite(false); doApply(); }}
+          onCancel={() => setConfirmOverwrite(false)}
+        />
+      )}
     </div>
   );
 }

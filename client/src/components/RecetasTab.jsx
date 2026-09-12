@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Search, Youtube, Link as LinkIcon } from 'lucide-react';
-import { Tag, StarsDisplay } from './ui.jsx';
+import { Tag, StarsDisplay, ConfirmDialog } from './ui.jsx';
 
 const TYPE_META = {
   desayuno: '🌅 Desayuno',
@@ -19,6 +19,7 @@ const searchable = (m) =>
 export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }) {
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState({ desayuno: false, almuerzo: false, cena: false });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const toggleType = (t) => setTypeFilter((p) => ({ ...p, [t]: !p[t] }));
   const anyTypeSelected = Object.values(typeFilter).some(Boolean);
 
@@ -108,7 +109,7 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
                 </div>
                 <button onClick={() => setEditing(m)} className="p-2 text-stone-400 hover:text-emerald-700"><Pencil size={16} /></button>
                 <button
-                  onClick={() => { if (confirm(`¿Eliminar "${m.name}"? No se puede deshacer.`)) setMeals((p) => p.filter((x) => x.id !== m.id)); }}
+                  onClick={() => setConfirmDeleteId(m.id)}
                   className="p-2 text-stone-400 hover:text-rose-600"
                 ><Trash2 size={16} /></button>
               </div>
@@ -116,6 +117,16 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
           </div>
         </div>
       ))}
+
+      {confirmDeleteId && (
+        <ConfirmDialog
+          title="Eliminar receta"
+          message={`¿Eliminar "${meals.find((m) => m.id === confirmDeleteId)?.name}"? No se puede deshacer.`}
+          confirmLabel="Eliminar"
+          onConfirm={() => { setMeals((p) => p.filter((x) => x.id !== confirmDeleteId)); setConfirmDeleteId(null); }}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { X, Trash2, ArrowRight, CalendarDays } from 'lucide-react';
 import { DAYS, EMPTY_WEEK } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
-import { useBackdropClose } from './ui.jsx';
+import { useBackdropClose, ConfirmDialog } from './ui.jsx';
 
 // Modal con la lista de todas las semanas guardadas (pasadas y futuras), para saltar entre
 // ellas sin perder lo que ya está planeado en cada una.
@@ -10,6 +11,7 @@ export default function WeeksList({ weeks, weekStart, onSelect, onDelete, onClos
   const all = { ...weeks, [weekStart]: weeks[weekStart] || EMPTY_WEEK };
   const keys = Object.keys(all).sort();
   const backdrop = useBackdropClose(onClose);
+  const [confirmDeleteKey, setConfirmDeleteKey] = useState(null);
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
@@ -39,7 +41,7 @@ export default function WeeksList({ weeks, weekStart, onSelect, onDelete, onClos
                   </button>
                 )}
                 <button
-                  onClick={() => { if (confirm('¿Eliminar esta semana? No se puede deshacer.')) onDelete(key); }}
+                  onClick={() => setConfirmDeleteKey(key)}
                   className="p-2 text-stone-400 hover:text-rose-600 rounded-lg"
                   title="Eliminar esta semana"
                 >
@@ -50,6 +52,16 @@ export default function WeeksList({ weeks, weekStart, onSelect, onDelete, onClos
           })}
         </div>
       </div>
+
+      {confirmDeleteKey && (
+        <ConfirmDialog
+          title="Eliminar semana"
+          message="¿Eliminar esta semana? No se puede deshacer."
+          confirmLabel="Eliminar"
+          onConfirm={() => { onDelete(confirmDeleteKey); setConfirmDeleteKey(null); }}
+          onCancel={() => setConfirmDeleteKey(null)}
+        />
+      )}
     </div>
   );
 }
