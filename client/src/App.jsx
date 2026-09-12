@@ -469,6 +469,7 @@ export default function App({ user }) {
           busyDays={busyDays}
           healthyOnly={healthyOnly}
           lunchPoolSize={meals.filter((m) => m.types.includes('almuerzo')).length}
+          hasAnyPlan={DAYS.some((d) => plan[d.key] || bfPlan[d.key] || lunchPlan[d.key])}
           onClose={() => setWizardOpen(false)}
           onApply={({ busyDays: selBusy, healthyOnly: selHealthy, reuseDinner, fillLunch }) => {
             setBusyDays(selBusy);

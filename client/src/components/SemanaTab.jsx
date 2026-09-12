@@ -74,7 +74,10 @@ export default function SemanaTab({
         </button>
 
         <div className="flex gap-4 px-0.5">
-          <button onClick={clearWeek} className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600">
+          <button
+            onClick={() => { if (!hasAnyPlan || confirm('¿Vaciar toda la semana? No se puede deshacer.')) clearWeek(); }}
+            className="flex flex-col items-center gap-1 text-stone-400 hover:text-stone-600"
+          >
             <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
               <Trash2 size={15} />
             </span>

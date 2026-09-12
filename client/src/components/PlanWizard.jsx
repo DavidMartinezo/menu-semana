@@ -5,7 +5,7 @@ import { useBackdropClose } from './ui.jsx';
 
 // Asistente de 2 pasos: qué días están ocupados, y si la semana debe ser solo saludable.
 // Al aplicar, reemplaza busyDays por la selección y dispara autofill con esos valores.
-export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, onClose, onApply }) {
+export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, hasAnyPlan, onClose, onApply }) {
   const [step, setStep] = useState(0);
   const [selDays, setSelDays] = useState(busyDays || {});
   const [selHealthy, setSelHealthy] = useState(!!healthyOnly);
@@ -108,12 +108,15 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, onClo
             </button>
           ) : (
             <button
-              onClick={() => onApply({
-                busyDays: selDays,
-                healthyOnly: selHealthy,
-                reuseDinner: lunchMode === 'reuse',
-                fillLunch: lunchMode === 'generate' && lunchPoolSize > 0,
-              })}
+              onClick={() => {
+                if (hasAnyPlan && !confirm('Ya tienes esta semana planeada — esto va a reemplazar las cenas, desayunos y almuerzos generados. ¿Seguro que quieres continuar?')) return;
+                onApply({
+                  busyDays: selDays,
+                  healthyOnly: selHealthy,
+                  reuseDinner: lunchMode === 'reuse',
+                  fillLunch: lunchMode === 'generate' && lunchPoolSize > 0,
+                });
+              }}
               className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl"
             >
               Armar semana
