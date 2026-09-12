@@ -5,7 +5,11 @@ import { extractFromText, importFromYoutube, importFromUrl, estimateKcal } from 
 
 // Aplica una receta devuelta por el backend a los campos del formulario.
 // favorite/rating/healthy no vienen de la IA (son gusto personal) — el usuario los pone a mano.
-function applyRecipe(parsed, setters) {
+// `ingredientStores` es la memoria del hogar (App.jsx) de a qué tienda quedó asociado cada
+// ingrediente la última vez que se guardó una receta con él — se usa para pisar lo que diga la
+// IA en esta importación y que un mismo ingrediente no termine en tiendas distintas según qué
+// receta lo trajo (ver plan de consolidación de la lista de compras).
+function applyRecipe(parsed, setters, ingredientStores) {
   const { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal, setServings } = setters;
   if (parsed.name) setName(parsed.name);
   if (parsed.cat) setCat(parsed.cat);
@@ -14,7 +18,12 @@ function applyRecipe(parsed, setters) {
   // Sugerencia de la IA, no autoritativa — el usuario puede corregir los toggles después.
   if (Array.isArray(parsed.types) && parsed.types.length) setTypes(parsed.types);
   if (Array.isArray(parsed.steps)) setSteps(parsed.steps);
-  if (Array.isArray(parsed.ing) && parsed.ing.length) setIng(parsed.ing);
+  if (Array.isArray(parsed.ing) && parsed.ing.length) {
+    setIng(parsed.ing.map((g) => {
+      const remembered = ingredientStores[g.item?.toLowerCase().trim()];
+      return remembered ? { ...g, store: remembered } : g;
+    }));
+  }
   if (parsed.videoUrl) setVideoUrl(parsed.videoUrl);
   if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
   if (typeof parsed.kcal === 'number') setKcal(parsed.kcal);
@@ -29,7 +38,7 @@ const TYPE_META = [
 
 const UNITS = ['', 'unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente'];
 
-export default function MealEditor({ meal, categories = [], stores = [], onClose, onSave }) {
+export default function MealEditor({ meal, categories = [], stores = [], ingredientStores = {}, onClose, onSave }) {
   const defaultStoreId = stores[0]?.id || 'both';
   const [name, setName] = useState(meal.name);
   const [cat, setCat] = useState(meal.cat);
@@ -70,7 +79,7 @@ export default function MealEditor({ meal, categories = [], stores = [], onClose
       if (recipes.length > 1) {
         setMultiRecipes(recipes); // el contenido trae varias recetas — que el usuario elija cuál
       } else {
-        applyRecipe(recipes[0], setters);
+        applyRecipe(recipes[0], setters, ingredientStores);
       }
     } catch (e) {
       setErr(e.message || 'Algo falló. Intenta de nuevo.');
@@ -179,7 +188,7 @@ export default function MealEditor({ meal, categories = [], stores = [], onClose
                 {multiRecipes.map((r, i) => (
                   <button
                     key={i}
-                    onClick={() => { applyRecipe(r, setters); setMultiRecipes(null); }}
+                    onClick={() => { applyRecipe(r, setters, ingredientStores); setMultiRecipes(null); }}
                     className="w-full text-left px-3 py-2 rounded-lg bg-white border border-amber-200 text-sm text-stone-700 hover:bg-amber-100"
                   >
                     {r.name || `Receta ${i + 1}`}

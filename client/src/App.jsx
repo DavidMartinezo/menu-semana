@@ -26,6 +26,27 @@ export default function App({ user }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [storesOpen, setStoresOpen] = useState(false);
   const [stores, setStores] = useState(DEFAULT_STORES); // preferencia del hogar, no por semana
+  // Recordatorio de "ya compraste esto" — nombre de ingrediente (minúscula) -> fecha ISO de la
+  // última vez que se palomeó como comprado. Tampoco es por semana, es del hogar.
+  const [purchaseHistory, setPurchaseHistory] = useState({});
+  const markPurchased = (itemName) => {
+    const key = itemName.toLowerCase().trim();
+    if (!key) return;
+    setPurchaseHistory((p) => ({ ...p, [key]: new Date().toISOString().slice(0, 10) }));
+  };
+  // A qué tienda quedó asociado cada ingrediente la última vez que se guardó una receta con él
+  // — así una importación nueva no vuelve a adivinar de cero (y puede contradecirse) para un
+  // ingrediente que ya se resolvió antes, sea por la IA o corregido a mano.
+  const [ingredientStores, setIngredientStores] = useState({});
+  const rememberIngredientStores = (ing) =>
+    setIngredientStores((p) => {
+      const next = { ...p };
+      for (const g of ing) {
+        const key = g.item?.toLowerCase().trim();
+        if (key) next[key] = g.store;
+      }
+      return next;
+    });
   const [upgradeError, setUpgradeError] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
@@ -151,6 +172,8 @@ export default function App({ user }) {
           setWeekStart(ws);
           setHealthyOnly(d.healthyOnly || false);
           setStores(d.stores?.length ? d.stores : DEFAULT_STORES);
+          setPurchaseHistory(d.purchaseHistory || {});
+          setIngredientStores(d.ingredientStores || {});
           return;
         }
       } catch { /* primera vez */ }
@@ -164,11 +187,11 @@ export default function App({ user }) {
     if (meals === null) return;
     const t = setTimeout(() => {
       userStore.set(STORE_KEY, JSON.stringify({
-        schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly, stores,
+        schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly, stores, purchaseHistory, ingredientStores,
       })).catch(() => {});
     }, 300);
     return () => clearTimeout(t);
-  }, [meals, weeks, weekStart, healthyOnly, stores, userStore]);
+  }, [meals, weeks, weekStart, healthyOnly, stores, purchaseHistory, ingredientStores, userStore]);
 
   const toggleBusyDay = (key) => setBusyDays((p) => ({ ...p, [key]: !p[key] }));
 
@@ -240,9 +263,14 @@ export default function App({ user }) {
   const clearWeek = () => { setPlan({}); setBfPlan({}); setLunchPlan({}); setChecked({}); setLunchReuseAll(false); };
 
   // --- Lista de compras agregada, agrupada por tienda; despensa aparte y sin cantidad ---
+  // Se agrupa PRIMERO por ingrediente+unidad (ignorando tienda) para que dos recetas con el
+  // mismo ingrediente siempre se sumen en una sola línea, aunque la IA haya clasificado cada
+  // una en una tienda distinta al importarlas por separado — solo al final se decide en qué
+  // sección de tienda mostrar esa línea ya consolidada, por mayoría de votos entre las tiendas
+  // de sus ingredientes de origen (empate → "Cualquier tienda").
   const shopping = useMemo(() => {
     const allStoreIds = [...stores.map((s) => s.id), 'both'];
-    const groups = Object.fromEntries(allStoreIds.map((id) => [id, {}]));
+    const merged = {};
     const pantry = {};
     const addMealIngredients = (m) => {
       if (!m) return;
@@ -253,23 +281,18 @@ export default function App({ user }) {
           if (!pantry[itemKey].from.includes(m.name)) pantry[itemKey].from.push(m.name);
           continue;
         }
-        // `store` inválido cae en "both": hay que resolverlo antes de armar la clave, para que
-        // la clave no diga una tienda distinta de la lista donde realmente quedó el ingrediente.
-        const storeKey = groups[g.store] ? g.store : 'both';
-        const bucket = groups[storeKey];
         // se agrupa por item+unidad: cantidades con la misma unidad se suman entre recetas.
         const unitKey = (g.unit || '').toLowerCase().trim();
         const groupKey = `${itemKey}|${unitKey}`;
-        // `key` se arma con los valores normalizados (los mismos que agrupan), no con `item`/`unit`
-        // tal como se escribieron: esos guardan la mayúscula de la PRIMERA receta que aportó el
-        // ingrediente, así que cambiar qué receta va primero renombraba la clave y ListaTab perdía
-        // el palomeado de un ingrediente que en realidad es el mismo.
-        if (!bucket[groupKey]) bucket[groupKey] = { key: `${storeKey}:${groupKey}`, item: g.item, qty: 0, hasQty: false, unit: g.unit || '', from: [] };
+        if (!merged[groupKey]) merged[groupKey] = { item: g.item, qty: 0, hasQty: false, unit: g.unit || '', from: [], storeVotes: {} };
+        const entry = merged[groupKey];
         if (typeof g.qty === 'number') {
-          bucket[groupKey].qty += g.qty;
-          bucket[groupKey].hasQty = true;
+          entry.qty += g.qty;
+          entry.hasQty = true;
         }
-        if (!bucket[groupKey].from.includes(m.name)) bucket[groupKey].from.push(m.name);
+        if (!entry.from.includes(m.name)) entry.from.push(m.name);
+        const voteStore = allStoreIds.includes(g.store) ? g.store : 'both';
+        entry.storeVotes[voteStore] = (entry.storeVotes[voteStore] || 0) + 1;
       }
     };
     for (const d of DAYS) {
@@ -279,19 +302,37 @@ export default function App({ user }) {
       // esos ingredientes ya se contaron con la cena del día anterior; sumarlos de nuevo duplicaría.
       if (lunchPlan[d.key]) addMealIngredients(mealById[lunchPlan[d.key]]);
     }
+
+    // Tienda ganadora por mayoría de votos; empate entre dos o más tiendas cae en "both".
+    const pickStore = (votes) => {
+      const entries = Object.entries(votes);
+      if (!entries.length) return 'both';
+      entries.sort((a, b) => b[1] - a[1]);
+      const top = entries[0][1];
+      return entries.filter(([, c]) => c === top).length > 1 ? 'both' : entries[0][0];
+    };
+
+    const groups = Object.fromEntries(allStoreIds.map((id) => [id, []]));
+    for (const [groupKey, entry] of Object.entries(merged)) {
+      const storeId = pickStore(entry.storeVotes);
+      groups[storeId].push({ key: `${storeId}:${groupKey}`, item: entry.item, qty: entry.qty, hasQty: entry.hasQty, unit: entry.unit, from: entry.from });
+    }
+
     const toList = (o) => Object.values(o).sort((a, b) => a.item.localeCompare(b.item));
     return {
-      byStore: allStoreIds.map((id) => ({ id, ...storeMeta(id, stores), items: toList(groups[id]) })),
+      byStore: allStoreIds.map((id) => ({ id, ...storeMeta(id, stores), items: groups[id].sort((a, b) => a.item.localeCompare(b.item)) })),
       pantry: toList(pantry),
     };
   }, [plan, bfPlan, lunchPlan, mealById, stores]);
 
-  const saveMeal = (m) =>
+  const saveMeal = (m) => {
+    rememberIngredientStores(m.ing);
     setMeals((prev) =>
       m.id && prev.some((x) => x.id === m.id)
         ? prev.map((x) => (x.id === m.id ? m : x))
         : [...prev, { ...m, id: uid() }]
     );
+  };
 
   // Cambiar de hogar (unirse o salir) apunta userStore a otro documento — se vuelve a mostrar
   // "Cargando…" mientras el efecto de arriba trae los datos de ese hogar.
@@ -442,7 +483,7 @@ export default function App({ user }) {
             openWeeksList: () => setWeeksListOpen(true),
           }} />
         )}
-        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores }} />}
+        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased }} />}
         {tab === 'recetas' && <RecetasTab {...{ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }} />}
       </div>
 
@@ -451,6 +492,7 @@ export default function App({ user }) {
           meal={editing}
           categories={[...new Set(meals.map((m) => m.cat))].sort((a, b) => a.localeCompare(b, 'es'))}
           stores={stores}
+          ingredientStores={ingredientStores}
           onClose={() => setEditing(null)}
           onSave={(m) => { saveMeal(m); setEditing(null); }}
         />

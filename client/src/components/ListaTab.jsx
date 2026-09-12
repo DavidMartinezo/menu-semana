@@ -3,9 +3,31 @@ import { ShoppingCart, Check } from 'lucide-react';
 import { DAYS, storeMeta } from '../data/seed.js';
 import { CopyBtn } from './ui.jsx';
 
-export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores }) {
+// Recordatorio pasivo de "ya compraste esto" — no resta cantidades ni oculta nada, solo
+// refresca la memoria de que probablemente todavía tengas algo de eso en la alacena. Deja de
+// mostrarse pasado este margen, para no acumular recordatorios ya inútiles.
+const RECENT_DAYS = 21;
+function lastBoughtLabel(item, purchaseHistory) {
+  const dateStr = purchaseHistory[item.toLowerCase().trim()];
+  if (!dateStr) return null;
+  const days = Math.floor((Date.now() - new Date(dateStr + 'T00:00:00').getTime()) / 86400000);
+  if (days < 0 || days > RECENT_DAYS) return null;
+  if (days === 0) return 'comprado hoy';
+  if (days === 1) return 'comprado ayer';
+  if (days < 7) return `comprado hace ${days} días`;
+  const weeks = Math.round(days / 7);
+  return `comprado hace ${weeks} semana${weeks > 1 ? 's' : ''}`;
+}
+
+export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased }) {
   const [copied, setCopied] = useState('');
   const anyMeals = DAYS.some((d) => mealById[plan[d.key]] || mealById[bfPlan[d.key]] || mealById[lunchPlan[d.key]]);
+
+  // Al palomear (no al despalomear) se registra como comprado hoy.
+  const toggleChecked = (key, item) => {
+    setChecked((c) => ({ ...c, [key]: !c[key] }));
+    if (!checked[key]) markPurchased(item);
+  };
 
   const copyText = async (text, label) => {
     try {
@@ -80,8 +102,9 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
             <ul className="divide-y divide-stone-100">
               {items.map((x) => {
                 const on = checked[x.key];
+                const reminder = !on && lastBoughtLabel(x.item, purchaseHistory);
                 return (
-                  <li key={x.key} onClick={() => setChecked((c) => ({ ...c, [x.key]: !c[x.key] }))}
+                  <li key={x.key} onClick={() => toggleChecked(x.key, x.item)}
                     className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">
                     <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}>
                       {on && <Check size={14} className="text-white" />}
@@ -89,6 +112,7 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
                     <span className={`flex-1 text-sm ${on ? 'line-through text-stone-300' : 'text-stone-700'}`}>
                       {x.hasQty && <span className="text-stone-400 font-medium">{x.qty}{x.unit ? ` ${x.unit}` : ''} </span>}
                       {x.item}
+                      {reminder && <span className="block text-xs text-amber-600 font-normal">🛒 {reminder}</span>}
                     </span>
                     <span className="text-xs text-stone-400 truncate max-w-[45%]">{x.from.join(', ')}</span>
                   </li>
@@ -105,13 +129,17 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
           <ul className="divide-y divide-stone-100">
             {shopping.pantry.map((x) => {
               const on = checked[x.key];
+              const reminder = !on && lastBoughtLabel(x.item, purchaseHistory);
               return (
-                <li key={x.key} onClick={() => setChecked((c) => ({ ...c, [x.key]: !c[x.key] }))}
+                <li key={x.key} onClick={() => toggleChecked(x.key, x.item)}
                   className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">
                   <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}>
                     {on && <Check size={14} className="text-white" />}
                   </span>
-                  <span className={`flex-1 text-sm ${on ? 'line-through text-stone-300' : 'text-stone-700'}`}>{x.item}</span>
+                  <span className={`flex-1 text-sm ${on ? 'line-through text-stone-300' : 'text-stone-700'}`}>
+                    {x.item}
+                    {reminder && <span className="block text-xs text-amber-600 font-normal">🛒 {reminder}</span>}
+                  </span>
                   <span className="text-xs text-stone-400 truncate max-w-[45%]">{x.from.join(', ')}</span>
                 </li>
               );
