@@ -21,12 +21,21 @@ function lastBoughtLabel(item, purchaseHistory) {
 
 export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased }) {
   const [copied, setCopied] = useState('');
+  const [purchaseDone, setPurchaseDone] = useState(false);
   const anyMeals = DAYS.some((d) => mealById[plan[d.key]] || mealById[bfPlan[d.key]] || mealById[lunchPlan[d.key]]);
 
-  // Al palomear (no al despalomear) se registra como comprado hoy.
-  const toggleChecked = (key, item) => {
-    setChecked((c) => ({ ...c, [key]: !c[key] }));
-    if (!checked[key]) markPurchased(item);
+  // Palomear/despalomear mientras compras no registra nada por sí solo — es exploratorio
+  // (marcas y desmarcas según lo que vas encontrando). El registro de "esto lo compré" pasa
+  // solo cuando decides que ya terminaste (ver completePurchase), reflejando lo que quedó
+  // marcado en ese momento, no cada click individual.
+  const toggleChecked = (key) => setChecked((c) => ({ ...c, [key]: !c[key] }));
+
+  const anyChecked = [...shopping.byStore.flatMap((g) => g.items), ...shopping.pantry].some((x) => checked[x.key]);
+  const completePurchase = () => {
+    const allItems = [...shopping.byStore.flatMap((g) => g.items), ...shopping.pantry];
+    allItems.filter((x) => checked[x.key]).forEach((x) => markPurchased(x.item));
+    setPurchaseDone(true);
+    setTimeout(() => setPurchaseDone(false), 1800);
   };
 
   const copyText = async (text, label) => {
@@ -94,6 +103,14 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
         <CopyBtn label="Copiar por receta (Keep)" active={copied === 'receta'} onClick={() => copyText(byRecipeText(), 'receta')} />
       </div>
 
+      <button
+        onClick={completePurchase}
+        disabled={!anyChecked}
+        className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed ${purchaseDone ? 'bg-emerald-600 text-white' : 'bg-white text-stone-600 hover:bg-stone-100'}`}
+      >
+        {purchaseDone ? <><Check size={16} /> ¡Registrado!</> : 'Marcar compra como hecha'}
+      </button>
+
       {shopping.byStore.map(({ id, label, cls, items }) => {
         if (!items.length) return null;
         return (
@@ -104,7 +121,7 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
                 const on = checked[x.key];
                 const reminder = !on && lastBoughtLabel(x.item, purchaseHistory);
                 return (
-                  <li key={x.key} onClick={() => toggleChecked(x.key, x.item)}
+                  <li key={x.key} onClick={() => toggleChecked(x.key)}
                     className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">
                     <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}>
                       {on && <Check size={14} className="text-white" />}
@@ -131,7 +148,7 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
               const on = checked[x.key];
               const reminder = !on && lastBoughtLabel(x.item, purchaseHistory);
               return (
-                <li key={x.key} onClick={() => toggleChecked(x.key, x.item)}
+                <li key={x.key} onClick={() => toggleChecked(x.key)}
                   className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">
                   <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}>
                     {on && <Check size={14} className="text-white" />}
