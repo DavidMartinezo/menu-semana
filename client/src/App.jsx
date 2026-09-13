@@ -47,6 +47,18 @@ export default function App({ user }) {
       }
       return next;
     });
+  // Productos de la lista de compras que no vienen de ninguna receta (ej. papel higiénico) —
+  // al estilo Keep: marcarlo lo tacha pero no lo borra, para desmarcarlo cuando se vuelva a
+  // necesitar sin tener que volver a escribirlo. Tampoco es por semana, es del hogar.
+  const [extraItems, setExtraItems] = useState([]);
+  const addExtraItem = (name, store) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setExtraItems((p) => [...p, { id: uid(), name: trimmed, store, checked: false }]);
+  };
+  const toggleExtraItem = (id) => setExtraItems((p) => p.map((x) => (x.id === id ? { ...x, checked: !x.checked } : x)));
+  const removeExtraItem = (id) => setExtraItems((p) => p.filter((x) => x.id !== id));
+
   const [upgradeError, setUpgradeError] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
@@ -174,6 +186,7 @@ export default function App({ user }) {
           setStores(d.stores?.length ? d.stores : DEFAULT_STORES);
           setPurchaseHistory(d.purchaseHistory || {});
           setIngredientStores(d.ingredientStores || {});
+          setExtraItems(d.extraItems || []);
           return;
         }
       } catch { /* primera vez */ }
@@ -187,11 +200,11 @@ export default function App({ user }) {
     if (meals === null) return;
     const t = setTimeout(() => {
       userStore.set(STORE_KEY, JSON.stringify({
-        schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly, stores, purchaseHistory, ingredientStores,
+        schemaVersion: SCHEMA_VERSION, meals, weeks, weekStart, healthyOnly, stores, purchaseHistory, ingredientStores, extraItems,
       })).catch(() => {});
     }, 300);
     return () => clearTimeout(t);
-  }, [meals, weeks, weekStart, healthyOnly, stores, purchaseHistory, ingredientStores, userStore]);
+  }, [meals, weeks, weekStart, healthyOnly, stores, purchaseHistory, ingredientStores, extraItems, userStore]);
 
   const toggleBusyDay = (key) => setBusyDays((p) => ({ ...p, [key]: !p[key] }));
 
@@ -483,7 +496,7 @@ export default function App({ user }) {
             openWeeksList: () => setWeeksListOpen(true),
           }} />
         )}
-        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased }} />}
+        {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased, extraItems, addExtraItem, toggleExtraItem, removeExtraItem }} />}
         {tab === 'recetas' && <RecetasTab {...{ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }} />}
       </div>
 

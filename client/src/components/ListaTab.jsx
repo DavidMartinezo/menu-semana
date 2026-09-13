@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingCart, Check } from 'lucide-react';
+import { ShoppingCart, Check, Plus, Trash2 } from 'lucide-react';
 import { DAYS, storeMeta } from '../data/seed.js';
 import { CopyBtn } from './ui.jsx';
 
@@ -19,10 +19,25 @@ function lastBoughtLabel(item, purchaseHistory) {
   return `comprado hace ${weeks} semana${weeks > 1 ? 's' : ''}`;
 }
 
-export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased }) {
+// Tiendas disponibles para un producto agregado a mano: las del hogar + la opción fija de
+// "cualquier tienda" (mismo id reservado `both` que ya usan los ingredientes de receta).
+const storeOptions = (stores) => [...stores, { id: 'both', label: 'Cualquier tienda' }];
+
+export default function ListaTab({
+  shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased,
+  extraItems, addExtraItem, toggleExtraItem, removeExtraItem,
+}) {
   const [copied, setCopied] = useState('');
   const [purchaseDone, setPurchaseDone] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemStore, setNewItemStore] = useState(stores[0]?.id || 'both');
   const anyMeals = DAYS.some((d) => mealById[plan[d.key]] || mealById[bfPlan[d.key]] || mealById[lunchPlan[d.key]]);
+
+  const submitNewItem = () => {
+    if (!newItemName.trim()) return;
+    addExtraItem(newItemName, newItemStore);
+    setNewItemName('');
+  };
 
   // Palomear/despalomear mientras compras no registra nada por sí solo — es exploratorio
   // (marcas y desmarcas según lo que vas encontrando). El registro de "esto lo compré" pasa
@@ -55,10 +70,12 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
 
   const byStoreText = () => {
     let out = '🛒 LISTA DE COMPRAS\n';
-    for (const { label, items } of shopping.byStore) {
-      if (!items.length) continue;
+    for (const { id, label, items } of shopping.byStore) {
+      const extras = extraItems.filter((x) => x.store === id);
+      if (!items.length && !extras.length) continue;
       out += `\n— ${label.toUpperCase()} —\n`;
       items.forEach((x) => (out += `☐ ${qtyPrefix(x)}${x.item}\n`));
+      extras.forEach((x) => (out += `☐ ${x.name}\n`));
     }
     if (shopping.pantry.length) {
       out += '\n— DE DESPENSA (revisar si hay) —\n';
@@ -84,10 +101,14 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
       if (lunchPlan[d.key]) addMeal(mealById[lunchPlan[d.key]]);
       addMeal(mealById[plan[d.key]]);
     }
+    if (extraItems.length) {
+      out += 'Otros\n';
+      extraItems.forEach((x) => (out += `  • ${x.name} (${storeMeta(x.store, stores).label})\n`));
+    }
     return out.trim();
   };
 
-  if (!anyMeals) {
+  if (!anyMeals && !extraItems.length) {
     return (
       <div className="mt-10 text-center text-stone-400">
         <ShoppingCart size={32} className="mx-auto mb-2 opacity-40" />
@@ -103,6 +124,29 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
         <CopyBtn label="Copiar por receta (Keep)" active={copied === 'receta'} onClick={() => copyText(byRecipeText(), 'receta')} />
       </div>
 
+      <div className="bg-white rounded-xl shadow-sm p-3">
+        <p className="text-xs text-stone-500 mb-2">Agregar algo que no esté en las recetas</p>
+        <div className="flex gap-2">
+          <input
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') submitNewItem(); }}
+            placeholder="Ej. Papel higiénico"
+            className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
+          />
+          <select
+            value={newItemStore}
+            onChange={(e) => setNewItemStore(e.target.value)}
+            className="px-2 py-2 rounded-lg border border-stone-200 bg-white text-sm"
+          >
+            {storeOptions(stores).map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
+          <button onClick={submitNewItem} disabled={!newItemName.trim()} className="px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white">
+            <Plus size={16} />
+          </button>
+        </div>
+      </div>
+
       <button
         onClick={completePurchase}
         disabled={!anyChecked}
@@ -112,10 +156,11 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
       </button>
 
       {shopping.byStore.map(({ id, label, cls, items }) => {
-        if (!items.length) return null;
+        const extras = extraItems.filter((x) => x.store === id);
+        if (!items.length && !extras.length) return null;
         return (
           <div key={id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className={`px-4 py-2.5 font-semibold text-sm ${cls}`}>{label} · {items.length}</div>
+            <div className={`px-4 py-2.5 font-semibold text-sm ${cls}`}>{label} · {items.length + extras.length}</div>
             <ul className="divide-y divide-stone-100">
               {items.map((x) => {
                 const on = checked[x.key];
@@ -135,6 +180,20 @@ export default function ListaTab({ shopping, checked, setChecked, plan, bfPlan, 
                   </li>
                 );
               })}
+              {extras.map((x) => (
+                <li key={x.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50">
+                  <span
+                    onClick={() => toggleExtraItem(x.id)}
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 cursor-pointer ${x.checked ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}
+                  >
+                    {x.checked && <Check size={14} className="text-white" />}
+                  </span>
+                  <span onClick={() => toggleExtraItem(x.id)} className={`flex-1 text-sm cursor-pointer ${x.checked ? 'line-through text-stone-300' : 'text-stone-700'}`}>
+                    {x.name}
+                  </span>
+                  <button onClick={() => removeExtraItem(x.id)} className="p-1 text-stone-300 hover:text-rose-600"><Trash2 size={14} /></button>
+                </li>
+              ))}
             </ul>
           </div>
         );
