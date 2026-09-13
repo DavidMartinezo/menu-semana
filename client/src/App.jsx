@@ -10,6 +10,7 @@ import SemanaTab from './components/SemanaTab.jsx';
 import ListaTab from './components/ListaTab.jsx';
 import RecetasTab from './components/RecetasTab.jsx';
 import MealEditor from './components/MealEditor.jsx';
+import MealView from './components/MealView.jsx';
 import PlanWizard from './components/PlanWizard.jsx';
 import WeeksList from './components/WeeksList.jsx';
 import SharePanel from './components/SharePanel.jsx';
@@ -91,6 +92,7 @@ export default function App({ user }) {
   const [weekStart, setWeekStart] = useState(mondayOf()); // fecha (ISO) del lunes de la semana que se está viendo
   const [healthyOnly, setHealthyOnly] = useState(false);  // preferencia persistente del wizard/Recetas
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [weeksListOpen, setWeeksListOpen] = useState(false);
 
@@ -502,11 +504,11 @@ export default function App({ user }) {
           <SemanaTab {...{
             meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
             busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard: () => setWizardOpen(true),
-            openWeeksList: () => setWeeksListOpen(true),
+            openWeeksList: () => setWeeksListOpen(true), openView: setViewing,
           }} />
         )}
         {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased, extraItems, addExtraItem, toggleExtraItem, removeExtraItem }} />}
-        {tab === 'recetas' && <RecetasTab {...{ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }} />}
+        {tab === 'recetas' && <RecetasTab {...{ meals, setMeals, setEditing, healthyOnly, setHealthyOnly, openView: setViewing }} />}
       </div>
 
       {editing && (
@@ -517,6 +519,15 @@ export default function App({ user }) {
           ingredientStores={ingredientStores}
           onClose={() => setEditing(null)}
           onSave={(m) => { saveMeal(m); setEditing(null); }}
+        />
+      )}
+
+      {viewing && (
+        <MealView
+          meal={viewing}
+          stores={stores}
+          onClose={() => setViewing(null)}
+          onEdit={() => { setViewing(null); setEditing(viewing); }}
         />
       )}
 

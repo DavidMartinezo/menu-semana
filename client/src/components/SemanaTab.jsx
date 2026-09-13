@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Shuffle, Clock, Youtube, CalendarDays, CalendarPlus, Trash2 } from 'lucide-react';
+import { Shuffle, Clock, Youtube, CalendarDays, CalendarPlus, Trash2, Eye } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
 import { buildWeekICS, downloadICS } from '../lib/ics.js';
@@ -7,7 +7,7 @@ import { Autocomplete, StarsDisplay, ConfirmDialog } from './ui.jsx';
 
 export default function SemanaTab({
   meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
-  busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList,
+  busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList, openView,
 }) {
   const cenaCandidates = meals.filter((m) => m.types.includes('cena'));
   const bfCandidates = meals.filter((m) => m.types.includes('desayuno'));
@@ -135,7 +135,10 @@ export default function SemanaTab({
                 )}
               </div>
 
-              <label className="block text-xs text-stone-400 mb-1">Desayuno</label>
+              <label className="flex items-center justify-between text-xs text-stone-400 mb-1">
+                Desayuno
+                {bf && <button onClick={() => openView(bf)} className="text-emerald-700 hover:text-emerald-800" title="Ver receta"><Eye size={14} /></button>}
+              </label>
               <Autocomplete
                 value={bfPlan[d.key] || ''}
                 onChange={(v) => setBfPlan((p) => ({ ...p, [d.key]: v }))}
@@ -143,8 +146,9 @@ export default function SemanaTab({
                 options={bfCandidates.map((m) => ({ value: m.id, label: m.name }))}
               />
 
-              <label className="block text-xs text-stone-400 mt-3 mb-1">
-                Almuerzo{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case"> · aprovechando la cena de ayer: {prevCena.name}</span>}
+              <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
+                <span>Almuerzo{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case"> · aprovechando la cena de ayer: {prevCena.name}</span>}</span>
+                {lunch && <button onClick={() => openView(lunch)} className="text-emerald-700 hover:text-emerald-800" title="Ver receta"><Eye size={14} /></button>}
               </label>
               <Autocomplete
                 value={lunchPlan[d.key] || ''}
@@ -154,7 +158,10 @@ export default function SemanaTab({
                 emptyText="Aún no tienes recetas marcadas como almuerzo — agrégaselo en Recetas"
               />
 
-              <label className="block text-xs text-stone-400 mt-3 mb-1">Cena</label>
+              <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
+                Cena
+                {cena && <button onClick={() => openView(cena)} className="text-emerald-700 hover:text-emerald-800" title="Ver receta"><Eye size={14} /></button>}
+              </label>
               <Autocomplete
                 value={plan[d.key] || ''}
                 onChange={(v) => setPlan((p) => ({ ...p, [d.key]: v }))}

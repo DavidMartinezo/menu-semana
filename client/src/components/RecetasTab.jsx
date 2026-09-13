@@ -16,7 +16,7 @@ const searchable = (m) =>
     .join(' ')
     .toLowerCase();
 
-export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, setHealthyOnly }) {
+export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, setHealthyOnly, openView }) {
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState({ desayuno: false, almuerzo: false, cena: false });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -80,7 +80,7 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
           <h3 className="text-xs font-semibold uppercase tracking-wide text-stone-400 mb-2">{cat}</h3>
           <div className="space-y-2">
             {filtered.filter((m) => m.cat === cat).map((m) => (
-              <div key={m.id} className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
+              <div key={m.id} onClick={() => openView(m)} className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3 cursor-pointer hover:bg-stone-50">
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-stone-800 truncate">{m.name}</div>
                   <div className="flex gap-1.5 mt-1 flex-wrap items-center">
@@ -107,9 +107,9 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
                     )}
                   </div>
                 </div>
-                <button onClick={() => setEditing(m)} className="p-2 text-stone-400 hover:text-emerald-700"><Pencil size={16} /></button>
+                <button onClick={(e) => { e.stopPropagation(); setEditing(m); }} className="p-2 text-stone-400 hover:text-emerald-700"><Pencil size={16} /></button>
                 <button
-                  onClick={() => setConfirmDeleteId(m.id)}
+                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(m.id); }}
                   className="p-2 text-stone-400 hover:text-rose-600"
                 ><Trash2 size={16} /></button>
               </div>
