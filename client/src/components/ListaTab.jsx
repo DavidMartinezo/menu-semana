@@ -33,9 +33,21 @@ export default function ListaTab({
   const [newItemStore, setNewItemStore] = useState(stores[0]?.id || 'both');
   const anyMeals = DAYS.some((d) => mealById[plan[d.key]] || mealById[bfPlan[d.key]] || mealById[lunchPlan[d.key]]);
 
+  // Nombres ya conocidos (aunque estén marcados/tachados) para sugerir mientras se escribe —
+  // así no hay que volver a teclear algo que ya se agregó antes.
+  const knownItemNames = [...new Set(extraItems.map((x) => x.name))].sort((a, b) => a.localeCompare(b, 'es'));
+
+  // Si el nombre ya existe en la lista, no se duplica: si estaba tachado (comprado) se
+  // desmarca para "pedirlo" de nuevo; si ya estaba activo, no hace falta nada.
   const submitNewItem = () => {
-    if (!newItemName.trim()) return;
-    addExtraItem(newItemName, newItemStore);
+    const trimmed = newItemName.trim();
+    if (!trimmed) return;
+    const existing = extraItems.find((x) => x.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) {
+      if (existing.checked) toggleExtraItem(existing.id);
+    } else {
+      addExtraItem(trimmed, newItemStore);
+    }
     setNewItemName('');
   };
 
@@ -132,8 +144,12 @@ export default function ListaTab({
             onChange={(e) => setNewItemName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submitNewItem(); }}
             placeholder="Ej. Papel higiénico"
+            list="extra-item-names"
             className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
           />
+          <datalist id="extra-item-names">
+            {knownItemNames.map((n) => <option key={n} value={n} />)}
+          </datalist>
           <select
             value={newItemStore}
             onChange={(e) => setNewItemStore(e.target.value)}
@@ -180,20 +196,24 @@ export default function ListaTab({
                   </li>
                 );
               })}
-              {extras.map((x) => (
-                <li key={x.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50">
-                  <span
-                    onClick={() => toggleExtraItem(x.id)}
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 cursor-pointer ${x.checked ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}
-                  >
-                    {x.checked && <Check size={14} className="text-white" />}
-                  </span>
-                  <span onClick={() => toggleExtraItem(x.id)} className={`flex-1 text-sm cursor-pointer ${x.checked ? 'line-through text-stone-300' : 'text-stone-700'}`}>
-                    {x.name}
-                  </span>
-                  <button onClick={() => removeExtraItem(x.id)} className="p-1 text-stone-300 hover:text-rose-600"><Trash2 size={14} /></button>
-                </li>
-              ))}
+              {extras.map((x) => {
+                const reminder = !x.checked && lastBoughtLabel(x.name, purchaseHistory);
+                return (
+                  <li key={x.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50">
+                    <span
+                      onClick={() => toggleExtraItem(x.id)}
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 cursor-pointer ${x.checked ? 'bg-emerald-600 border-emerald-600' : 'border-stone-300'}`}
+                    >
+                      {x.checked && <Check size={14} className="text-white" />}
+                    </span>
+                    <span onClick={() => toggleExtraItem(x.id)} className={`flex-1 text-sm cursor-pointer ${x.checked ? 'line-through text-stone-300' : 'text-stone-700'}`}>
+                      {x.name}
+                      {reminder && <span className="block text-xs text-amber-600 font-normal">🛒 {reminder}</span>}
+                    </span>
+                    <button onClick={() => removeExtraItem(x.id)} className="p-1 text-stone-300 hover:text-rose-600"><Trash2 size={14} /></button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );

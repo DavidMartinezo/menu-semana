@@ -56,7 +56,16 @@ export default function App({ user }) {
     if (!trimmed) return;
     setExtraItems((p) => [...p, { id: uid(), name: trimmed, store, checked: false }]);
   };
-  const toggleExtraItem = (id) => setExtraItems((p) => p.map((x) => (x.id === id ? { ...x, checked: !x.checked } : x)));
+  // Al marcarlo (comprado) también entra al mismo recordatorio de "ya lo compraste" que usan
+  // los ingredientes de receta — igual de útil aquí: si semanas después lo desmarcas porque
+  // se te acabó, el recordatorio te dice desde cuándo lo tenías.
+  const toggleExtraItem = (id) =>
+    setExtraItems((p) => p.map((x) => {
+      if (x.id !== id) return x;
+      const next = { ...x, checked: !x.checked };
+      if (next.checked) markPurchased(x.name);
+      return next;
+    }));
   const removeExtraItem = (id) => setExtraItems((p) => p.filter((x) => x.id !== id));
 
   const [upgradeError, setUpgradeError] = useState(null);
