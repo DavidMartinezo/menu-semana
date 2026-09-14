@@ -137,7 +137,7 @@ export default function SemanaTab({
 
               <label className="flex items-center justify-between text-xs text-stone-400 mb-1">
                 Desayuno
-                {bf && <button onClick={() => openView(bf)} className="text-emerald-700 hover:text-emerald-800" title="Ver receta"><Eye size={14} /></button>}
+                {bf && <button onClick={() => openView(bf)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> Ver receta</button>}
               </label>
               <Autocomplete
                 value={bfPlan[d.key] || ''}
@@ -148,7 +148,7 @@ export default function SemanaTab({
 
               <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
                 <span>Almuerzo{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case"> · aprovechando la cena de ayer: {prevCena.name}</span>}</span>
-                {lunch && <button onClick={() => openView(lunch)} className="text-emerald-700 hover:text-emerald-800" title="Ver receta"><Eye size={14} /></button>}
+                {lunch && <button onClick={() => openView(lunch)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case shrink-0"><Eye size={14} /> Ver receta</button>}
               </label>
               <Autocomplete
                 value={lunchPlan[d.key] || ''}
@@ -160,7 +160,7 @@ export default function SemanaTab({
 
               <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
                 Cena
-                {cena && <button onClick={() => openView(cena)} className="text-emerald-700 hover:text-emerald-800" title="Ver receta"><Eye size={14} /></button>}
+                {cena && <button onClick={() => openView(cena)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> Ver receta</button>}
               </label>
               <Autocomplete
                 value={plan[d.key] || ''}

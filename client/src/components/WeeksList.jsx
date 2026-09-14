@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Trash2, ArrowRight, CalendarDays } from 'lucide-react';
 import { DAYS, EMPTY_WEEK } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
-import { useBackdropClose, ConfirmDialog } from './ui.jsx';
+import { useBackdropClose, useLockBodyScroll, ConfirmDialog } from './ui.jsx';
 
 // Modal con la lista de todas las semanas guardadas (pasadas y futuras), para saltar entre
 // ellas sin perder lo que ya está planeado en cada una.
@@ -12,10 +12,11 @@ export default function WeeksList({ weeks, weekStart, onSelect, onDelete, onClos
   const keys = Object.keys(all).sort();
   const backdrop = useBackdropClose(onClose);
   const [confirmDeleteKey, setConfirmDeleteKey] = useState(null);
+  useLockBodyScroll();
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
-      <div className="bg-stone-50 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-stone-50 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[80vh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-stone-50 border-b border-stone-200 z-10">
           <h3 className="font-semibold text-stone-800 flex items-center gap-1.5"><CalendarDays size={16} /> Mis semanas</h3>
           <button onClick={onClose} className="p-1 text-stone-400"><X size={20} /></button>

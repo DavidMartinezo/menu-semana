@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Wand2 } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
-import { useBackdropClose, ConfirmDialog } from './ui.jsx';
+import { useBackdropClose, useLockBodyScroll, ConfirmDialog } from './ui.jsx';
 
 // Asistente de 2 pasos: qué días están ocupados, y si la semana debe ser solo saludable.
 // Al aplicar, reemplaza busyDays por la selección y dispara autofill con esos valores.
@@ -17,6 +17,7 @@ export default function PlanWizard({ busyDays, healthyOnly, lunchPoolSize, hasAn
 
   const toggleDay = (key) => setSelDays((p) => ({ ...p, [key]: !p[key] }));
   const backdrop = useBackdropClose(onClose);
+  useLockBodyScroll();
 
   const doApply = () => onApply({
     busyDays: selDays,

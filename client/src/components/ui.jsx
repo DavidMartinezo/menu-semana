@@ -14,10 +14,22 @@ export function useBackdropClose(onClose) {
   };
 }
 
+// Mientras un modal está abierto, bloquea el scroll de la página de atrás — sin esto, hacer
+// scroll dentro del modal hasta el tope o el fondo "encadena" el scroll hacia lo que queda
+// detrás (muy notorio en celular), y se ve como si la página de atrás también se moviera.
+export function useLockBodyScroll() {
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = original; };
+  }, []);
+}
+
 // Confirmación propia para acciones que no se pueden deshacer — en vez del confirm() nativo
 // del navegador, que sale con el dominio, en inglés, y sin nada del estilo de la app.
 export function ConfirmDialog({ title = 'Confirmar', message, confirmLabel = 'Confirmar', danger = true, onConfirm, onCancel }) {
   const backdrop = useBackdropClose(onCancel);
+  useLockBodyScroll();
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-30 p-0 sm:p-4" {...backdrop}>
       <div className="bg-stone-50 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>

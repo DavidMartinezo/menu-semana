@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Users } from 'lucide-react';
-import { useBackdropClose, CopyBtn } from './ui.jsx';
+import { useBackdropClose, useLockBodyScroll, CopyBtn } from './ui.jsx';
 
 // Modal para compartir el banco de recetas/plan con otra cuenta de Google (ej. la esposa), o
 // unirse al hogar compartido de otra persona con su código. Ver lib/userStorage.js para el
@@ -10,6 +10,7 @@ export default function SharePanel({ householdId, isMember, onJoin, onLeave, onC
   const [copied, setCopied] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const backdrop = useBackdropClose(onClose);
+  useLockBodyScroll();
 
   const copyCode = () => {
     navigator.clipboard.writeText(householdId).then(() => {

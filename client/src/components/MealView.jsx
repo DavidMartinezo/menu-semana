@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Youtube, Link as LinkIcon, Play, Pencil } from 'lucide-react';
-import { Tag, StarsDisplay, useBackdropClose } from './ui.jsx';
+import { Tag, StarsDisplay, useBackdropClose, useLockBodyScroll } from './ui.jsx';
 import { storeMeta } from '../data/seed.js';
 import { getYouTubeId, youtubeThumbnail, youtubeEmbed } from '../lib/youtube.js';
 
@@ -16,10 +16,11 @@ export default function MealView({ meal, stores, onClose, onEdit }) {
   const [playing, setPlaying] = useState(false);
   const backdrop = useBackdropClose(onClose);
   const videoId = getYouTubeId(meal.videoUrl);
+  useLockBodyScroll();
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
-      <div className="bg-stone-50 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-stone-50 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-stone-50 border-b border-stone-200 z-10">
           <div className="min-w-0">
             <h3 className="font-semibold text-stone-800 truncate">{meal.name}</h3>
