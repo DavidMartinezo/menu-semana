@@ -244,4 +244,21 @@ export default {
   'ics.lunch': 'Almuerzo: {name}',
   'ics.dinner': 'Cena: {name}',
   'ics.prepareTomorrow': 'Prepara para mañana: {name}',
+
+  // Tutorial guiado
+  'tour.welcomeTitle': '¡Bienvenido a {app}!',
+  'tour.welcomeBody': 'Esta app te ayuda a planear tus cenas, armar la lista de compras y guardar tus recetas favoritas. Te mostramos rapidito cómo funciona.',
+  'tour.tabsTitle': 'Tus 3 secciones',
+  'tour.tabsBody': 'Semana: qué se come cada día. Lista: la lista de compras que sale de lo que planeaste. Recetas: tu banco de comidas guardadas.',
+  'tour.wizardTitle': 'Sorpréndeme',
+  'tour.wizardBody': 'Con este botón la app llena la semana sola, elige recetas por ti según qué días marques como ocupados.',
+  'tour.shareTitle': 'Compartir con la familia',
+  'tour.shareBody': 'Si alguien de tu familia ya usa la app, pídele su código y únete desde aquí — así ven las mismas recetas y el mismo plan, en vez de empezar cada uno de cero.',
+  'tour.doneTitle': '¡Listo!',
+  'tour.doneBody': 'Eso es todo. Si quieres volver a ver este recorrido, usa el botón de ayuda (?) junto al selector de idioma.',
+  'tour.next': 'Siguiente',
+  'tour.back': 'Atrás',
+  'tour.skip': 'Saltar',
+  'tour.finish': 'Entendido',
+  'tour.reopenTitle': 'Ver el tutorial de nuevo',
 };

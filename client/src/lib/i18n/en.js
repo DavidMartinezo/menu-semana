@@ -243,4 +243,21 @@ export default {
   'ics.lunch': 'Lunch: {name}',
   'ics.dinner': 'Dinner: {name}',
   'ics.prepareTomorrow': 'Prepare for tomorrow: {name}',
+
+  // Guided tour
+  'tour.welcomeTitle': 'Welcome to {app}!',
+  'tour.welcomeBody': "This app helps you plan your dinners, build the shopping list, and save your favorite recipes. Here's a quick rundown of how it works.",
+  'tour.tabsTitle': 'Your 3 sections',
+  'tour.tabsBody': 'Week: what to eat each day. List: the shopping list built from what you planned. Recipes: your saved bank of meals.',
+  'tour.wizardTitle': 'Surprise me',
+  'tour.wizardBody': "This button fills the week for you automatically, picking recipes based on which days you mark as busy.",
+  'tour.shareTitle': 'Share with family',
+  'tour.shareBody': "If someone in your family already uses the app, ask them for their code and join from here — that way you both see the same recipes and plan, instead of starting from scratch each.",
+  'tour.doneTitle': "That's it!",
+  'tour.doneBody': 'If you want to see this walkthrough again, use the help button (?) next to the language selector.',
+  'tour.next': 'Next',
+  'tour.back': 'Back',
+  'tour.skip': 'Skip',
+  'tour.finish': 'Got it',
+  'tour.reopenTitle': 'See the tutorial again',
 };

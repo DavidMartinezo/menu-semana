@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, ShoppingCart, BookOpen } from 'lucide-react';
+import { Calendar, ShoppingCart, BookOpen, HelpCircle } from 'lucide-react';
 import { storage } from './lib/storage.js';
 import { resolveHouseholdId, getHouseholdStorage, joinHousehold, leaveHousehold } from './lib/userStorage.js';
 import { signOutUser, signInWithGoogle, upgradeGuestToGoogle } from './lib/auth.js';
@@ -16,10 +16,12 @@ import WeeksList from './components/WeeksList.jsx';
 import SharePanel from './components/SharePanel.jsx';
 import StoresPanel from './components/StoresPanel.jsx';
 import LanguageToggle from './components/LanguageToggle.jsx';
+import GuidedTour from './components/GuidedTour.jsx';
 import { useT } from './lib/i18n/LanguageContext.jsx';
 
 const STORE_KEY = 'planner-v1';
 const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/cena con types)
+const TOUR_KEY_PREFIX = 'menu-semana:tourDone:';
 
 export default function App({ user }) {
   const { t, lang } = useT();
@@ -98,6 +100,7 @@ export default function App({ user }) {
   const [viewing, setViewing] = useState(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [weeksListOpen, setWeeksListOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
 
   const currentWeek = weeks[weekStart] || EMPTY_WEEK;
   const { plan, bfPlan, lunchPlan, busyDays, checked, lunchReuseAll } = currentWeek;
@@ -219,6 +222,31 @@ export default function App({ user }) {
     }, 300);
     return () => clearTimeout(t);
   }, [meals, weeks, weekStart, healthyOnly, stores, purchaseHistory, ingredientStores, extraItems, userStore]);
+
+  // --- Tutorial guiado: se abre solo la primera vez, por cuenta y por dispositivo (no es un
+  // dato del hogar compartido — cada persona que se une ve el suyo, sin depender de si otro
+  // miembro del hogar ya lo vio). Espera a que meals termine de cargar para no aparecer
+  // encima de la pantalla de "Cargando…".
+  const tourKey = TOUR_KEY_PREFIX + user.uid;
+  useEffect(() => {
+    if (meals === null) return;
+    let seen = true;
+    try { seen = localStorage.getItem(tourKey) === '1'; } catch { /* noop */ }
+    if (!seen) setTourOpen(true);
+  }, [meals, tourKey]);
+
+  const finishTour = () => {
+    setTourOpen(false);
+    try { localStorage.setItem(tourKey, '1'); } catch { /* noop */ }
+  };
+  // Reabrir a mano (botón "?"): fuerza la pestaña Semana primero para que "Sorpréndeme" esté
+  // montado cuando el tour llegue a ese paso, y sube el scroll al inicio — si quien reabre
+  // había bajado bastante en la lista de días, ese botón podría quedar fuera de la pantalla.
+  const reopenTour = () => {
+    setTab('semana');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTourOpen(true);
+  };
 
   const toggleBusyDay = (key) => setBusyDays((p) => ({ ...p, [key]: !p[key] }));
 
@@ -436,6 +464,13 @@ export default function App({ user }) {
           </div>
           <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
             <LanguageToggle />
+            <button
+              onClick={reopenTour}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-emerald-700 hover:bg-emerald-50"
+              title={t('tour.reopenTitle')}
+            >
+              <HelpCircle size={18} />
+            </button>
             {user.isAnonymous ? (
               <>
                 <span className="text-sm text-stone-500 hidden sm:inline">{t('header.guestMode')}</span>
@@ -466,6 +501,7 @@ export default function App({ user }) {
                   {t('header.stores')}
                 </button>
                 <button
+                  data-tour="share-btn"
                   onClick={() => setShareOpen(true)}
                   className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
                 >
@@ -495,7 +531,7 @@ export default function App({ user }) {
           </div>
         )}
 
-        <nav className="flex gap-1 bg-white rounded-xl p-1 shadow-sm sticky top-2 z-10">
+        <nav data-tour="tabs-nav" className="flex gap-1 bg-white rounded-xl p-1 shadow-sm sticky top-2 z-10">
           {tabs.map(({ k, label, Icon }) => (
             <button key={k} onClick={() => { setTab(k); track('tab_view', { tab: k }); }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition ${tab === k ? 'bg-emerald-700 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>
@@ -578,6 +614,8 @@ export default function App({ user }) {
           onClose={() => setShareOpen(false)}
         />
       )}
+
+      {tourOpen && <GuidedTour isAnonymous={user.isAnonymous} onFinish={finishTour} />}
     </div>
   );
 }

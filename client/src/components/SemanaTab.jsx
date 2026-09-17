@@ -70,6 +70,7 @@ export default function SemanaTab({
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <button
+          data-tour="wizard-btn"
           onClick={openWizard}
           className="w-full sm:w-64 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition"
         >
