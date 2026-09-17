@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus, Trash2, Sparkles, Youtube, Link as LinkIcon } from 'lucide-react';
+import { X, Plus, Trash2, Sparkles, Youtube, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import { Toggle, Stars, useBackdropClose, useLockBodyScroll } from './ui.jsx';
 import { extractFromText, importFromYoutube, importFromUrl, estimateKcal } from '../lib/api.js';
 import { useT } from '../lib/i18n/LanguageContext.jsx';
@@ -64,6 +64,10 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
   const [err, setErr] = useState('');
   const [kcalErr, setKcalErr] = useState('');
   const [multiRecipes, setMultiRecipes] = useState(null); // varias recetas detectadas, sin elegir aún
+  // Los 3 métodos de importar son un acordeón de una sola selección — en la práctica se usa
+  // uno solo por receta, así que no tiene sentido tenerlos los 3 expandidos a la vez.
+  const [importMethod, setImportMethod] = useState(null); // null | 'youtube' | 'url' | 'text'
+  const toggleImportMethod = (m) => setImportMethod((cur) => (cur === m ? null : m));
 
   const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal, setServings };
   const setIngAt = (i, patch) => setIng((p) => p.map((x, j) => (j === i ? { ...x, ...patch } : x)));
@@ -123,61 +127,94 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
 
         <div className="p-4 space-y-4">
           {/* Importar desde YouTube */}
-          <div className="bg-rose-50 border border-rose-100 rounded-xl p-3">
-            <label className="text-xs font-semibold text-rose-700 flex items-center gap-1.5"><Youtube size={14} /> {t('recetas.importYoutubeTitle')}</label>
-            <p className="text-xs text-stone-500 mt-1">{t('recetas.importYoutubeHint')}</p>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder={t('recetas.importYoutubePlaceholder')}
-              className="w-full mt-2 px-3 py-2 rounded-lg border border-rose-200 bg-white text-sm"
-            />
+          <div className="bg-rose-50 border border-rose-100 rounded-xl overflow-hidden">
             <button
-              onClick={() => runImport('youtube')}
-              disabled={busy !== '' || !url.trim()}
-              className="mt-2 w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
+              type="button"
+              onClick={() => toggleImportMethod('youtube')}
+              className="w-full flex items-center justify-between gap-1.5 p-3 text-left"
             >
-              {busy === 'youtube' ? t('recetas.importing') : <><Youtube size={16} /> {t('recetas.importRecipe')}</>}
+              <span className="text-xs font-semibold text-rose-700 flex items-center gap-1.5"><Youtube size={14} /> {t('recetas.importYoutubeTitle')}</span>
+              <ChevronDown size={16} className={`text-rose-400 shrink-0 transition-transform ${importMethod === 'youtube' ? 'rotate-180' : ''}`} />
             </button>
+            {importMethod === 'youtube' && (
+              <div className="px-3 pb-3">
+                <p className="text-xs text-stone-500">{t('recetas.importYoutubeHint')}</p>
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder={t('recetas.importYoutubePlaceholder')}
+                  className="w-full mt-2 px-3 py-2 rounded-lg border border-rose-200 bg-white text-sm"
+                />
+                <button
+                  onClick={() => runImport('youtube')}
+                  disabled={busy !== '' || !url.trim()}
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
+                >
+                  {busy === 'youtube' ? t('recetas.importing') : <><Youtube size={16} /> {t('recetas.importRecipe')}</>}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Importar desde página web */}
-          <div className="bg-sky-50 border border-sky-100 rounded-xl p-3">
-            <label className="text-xs font-semibold text-sky-700 flex items-center gap-1.5"><LinkIcon size={14} /> {t('recetas.importWebTitle')}</label>
-            <p className="text-xs text-stone-500 mt-1">{t('recetas.importWebHint')}</p>
-            <input
-              value={pageUrl}
-              onChange={(e) => setPageUrl(e.target.value)}
-              placeholder={t('recetas.importWebPlaceholder')}
-              className="w-full mt-2 px-3 py-2 rounded-lg border border-sky-200 bg-white text-sm"
-            />
+          <div className="bg-sky-50 border border-sky-100 rounded-xl overflow-hidden">
             <button
-              onClick={() => runImport('url')}
-              disabled={busy !== '' || !pageUrl.trim()}
-              className="mt-2 w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
+              type="button"
+              onClick={() => toggleImportMethod('url')}
+              className="w-full flex items-center justify-between gap-1.5 p-3 text-left"
             >
-              {busy === 'url' ? t('recetas.importing') : <><LinkIcon size={16} /> {t('recetas.importRecipe')}</>}
+              <span className="text-xs font-semibold text-sky-700 flex items-center gap-1.5"><LinkIcon size={14} /> {t('recetas.importWebTitle')}</span>
+              <ChevronDown size={16} className={`text-sky-400 shrink-0 transition-transform ${importMethod === 'url' ? 'rotate-180' : ''}`} />
             </button>
+            {importMethod === 'url' && (
+              <div className="px-3 pb-3">
+                <p className="text-xs text-stone-500">{t('recetas.importWebHint')}</p>
+                <input
+                  value={pageUrl}
+                  onChange={(e) => setPageUrl(e.target.value)}
+                  placeholder={t('recetas.importWebPlaceholder')}
+                  className="w-full mt-2 px-3 py-2 rounded-lg border border-sky-200 bg-white text-sm"
+                />
+                <button
+                  onClick={() => runImport('url')}
+                  disabled={busy !== '' || !pageUrl.trim()}
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
+                >
+                  {busy === 'url' ? t('recetas.importing') : <><LinkIcon size={16} /> {t('recetas.importRecipe')}</>}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Extraer de texto pegado */}
-          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
-            <label className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5"><Sparkles size={14} /> {t('recetas.extractTitle')}</label>
-            <p className="text-xs text-stone-500 mt-1">{t('recetas.extractHint')}</p>
-            <textarea
-              value={raw}
-              onChange={(e) => setRaw(e.target.value)}
-              rows={3}
-              placeholder={t('recetas.extractPlaceholder')}
-              className="w-full mt-2 px-3 py-2 rounded-lg border border-emerald-200 bg-white text-sm resize-none"
-            />
+          <div className="bg-emerald-50 border border-emerald-100 rounded-xl overflow-hidden">
             <button
-              onClick={() => runImport('text')}
-              disabled={busy !== '' || !raw.trim()}
-              className="mt-2 w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
+              type="button"
+              onClick={() => toggleImportMethod('text')}
+              className="w-full flex items-center justify-between gap-1.5 p-3 text-left"
             >
-              {busy === 'text' ? t('recetas.extracting') : <><Sparkles size={16} /> {t('recetas.extractIngredients')}</>}
+              <span className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5"><Sparkles size={14} /> {t('recetas.extractTitle')}</span>
+              <ChevronDown size={16} className={`text-emerald-600 shrink-0 transition-transform ${importMethod === 'text' ? 'rotate-180' : ''}`} />
             </button>
+            {importMethod === 'text' && (
+              <div className="px-3 pb-3">
+                <p className="text-xs text-stone-500">{t('recetas.extractHint')}</p>
+                <textarea
+                  value={raw}
+                  onChange={(e) => setRaw(e.target.value)}
+                  rows={3}
+                  placeholder={t('recetas.extractPlaceholder')}
+                  className="w-full mt-2 px-3 py-2 rounded-lg border border-emerald-200 bg-white text-sm resize-none"
+                />
+                <button
+                  onClick={() => runImport('text')}
+                  disabled={busy !== '' || !raw.trim()}
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
+                >
+                  {busy === 'text' ? t('recetas.extracting') : <><Sparkles size={16} /> {t('recetas.extractIngredients')}</>}
+                </button>
+              </div>
+            )}
           </div>
 
           {err && <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2">{err}</p>}
