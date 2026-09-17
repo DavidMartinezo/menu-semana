@@ -15,11 +15,14 @@ import PlanWizard from './components/PlanWizard.jsx';
 import WeeksList from './components/WeeksList.jsx';
 import SharePanel from './components/SharePanel.jsx';
 import StoresPanel from './components/StoresPanel.jsx';
+import LanguageToggle from './components/LanguageToggle.jsx';
+import { useT } from './lib/i18n/LanguageContext.jsx';
 
 const STORE_KEY = 'planner-v1';
 const SCHEMA_VERSION = 2; // v2 = banco de comidas unificado (desayuno/almuerzo/cena con types)
 
 export default function App({ user }) {
+  const { t, lang } = useT();
   // A qué hogar (households/{id}) pertenece esta cuenta — por defecto el suyo propio (su uid),
   // salvo que se haya unido al de alguien más (incluye invitados: alguien puede entrar como
   // invitado y unirse a un hogar directo desde el login, sin cuenta de Google — ver Login.jsx).
@@ -379,11 +382,11 @@ export default function App({ user }) {
     } catch (e) {
       if (e.code === 'auth/credential-already-in-use') {
         setUpgradeError({
-          message: 'Esa cuenta de Google ya tiene su propio banco de recetas — inicia sesión normal en vez de vincular (perderás lo armado como invitado).',
+          message: t('app.upgradeConflict'),
           conflict: true,
         });
       } else if (e.code !== 'auth/popup-closed-by-user') {
-        setUpgradeError({ message: 'No se pudo vincular la cuenta. Inténtalo de nuevo.', conflict: false });
+        setUpgradeError({ message: t('app.upgradeFailed'), conflict: false });
       }
     }
   };
@@ -396,7 +399,7 @@ export default function App({ user }) {
       await signInWithGoogle();
     } catch (e) {
       if (e.code !== 'auth/popup-closed-by-user') {
-        setUpgradeError({ message: 'No se pudo iniciar sesión. Inténtalo de nuevo.', conflict: false });
+        setUpgradeError({ message: t('app.signInFailed'), conflict: false });
       }
     }
   };
@@ -404,23 +407,23 @@ export default function App({ user }) {
   if (loadError) {
     return (
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center text-center p-4 gap-3">
-        <p className="text-stone-600">No se pudo cargar tus datos.</p>
+        <p className="text-stone-600">{t('app.loadError')}</p>
         <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 max-w-md">{loadError}</p>
         <button onClick={signOutUser} className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50">
-          Cerrar sesión
+          {t('header.signOut')}
         </button>
       </div>
     );
   }
 
   if (meals === null) {
-    return <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-400">Cargando…</div>;
+    return <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-400">{t('app.loading')}</div>;
   }
 
   const tabs = [
-    { k: 'semana', label: 'Semana', Icon: Calendar },
-    { k: 'lista', label: 'Lista', Icon: ShoppingCart },
-    { k: 'recetas', label: 'Recetas', Icon: BookOpen },
+    { k: 'semana', label: t('tab.semana'), Icon: Calendar },
+    { k: 'lista', label: t('tab.lista'), Icon: ShoppingCart },
+    { k: 'recetas', label: t('tab.recetas'), Icon: BookOpen },
   ];
 
   return (
@@ -428,25 +431,26 @@ export default function App({ user }) {
       <div className="max-w-3xl mx-auto px-4 pb-24">
         <header className="pt-6 pb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">Menú de la semana</h1>
-            <p className="text-sm text-stone-500 mt-0.5">Planea, arma la lista y compra sin pensarlo dos veces.</p>
+            <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">{t('app.title')}</h1>
+            <p className="text-sm text-stone-500 mt-0.5">{t('app.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
+            <LanguageToggle />
             {user.isAnonymous ? (
               <>
-                <span className="text-sm text-stone-500 hidden sm:inline">Modo invitado</span>
+                <span className="text-sm text-stone-500 hidden sm:inline">{t('header.guestMode')}</span>
                 <button
                   onClick={handleUpgrade}
                   className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium"
                 >
-                  Vincular con Google
+                  {t('header.linkGoogle')}
                 </button>
                 <button
                   onClick={signOutUser}
                   className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
-                  title="Sale del modo invitado (lo que armaste aquí no se recupera después, salvo que hayas vinculado una cuenta)"
+                  title={t('header.exitTitle')}
                 >
-                  Salir
+                  {t('header.exit')}
                 </button>
               </>
             ) : (
@@ -459,19 +463,19 @@ export default function App({ user }) {
                   onClick={() => setStoresOpen(true)}
                   className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
                 >
-                  Tiendas
+                  {t('header.stores')}
                 </button>
                 <button
                   onClick={() => setShareOpen(true)}
                   className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
                 >
-                  Compartir
+                  {t('header.share')}
                 </button>
                 <button
                   onClick={signOutUser}
                   className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
                 >
-                  Cerrar sesión
+                  {t('header.signOut')}
                 </button>
               </>
             )}
@@ -485,7 +489,7 @@ export default function App({ user }) {
                 onClick={handleUseGoogleAccount}
                 className="mt-2 text-sm px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium"
               >
-                Iniciar sesión con esa cuenta
+                {t('app.useThisAccount')}
               </button>
             )}
           </div>
@@ -514,7 +518,7 @@ export default function App({ user }) {
       {editing && (
         <MealEditor
           meal={editing}
-          categories={[...new Set(meals.map((m) => m.cat))].sort((a, b) => a.localeCompare(b, 'es'))}
+          categories={[...new Set(meals.map((m) => m.cat))].sort((a, b) => a.localeCompare(b, lang))}
           stores={stores}
           ingredientStores={ingredientStores}
           onClose={() => setEditing(null)}

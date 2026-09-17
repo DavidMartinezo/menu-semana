@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Plus, Trash2, Sparkles, Youtube, Link as LinkIcon } from 'lucide-react';
 import { Toggle, Stars, useBackdropClose, useLockBodyScroll } from './ui.jsx';
 import { extractFromText, importFromYoutube, importFromUrl, estimateKcal } from '../lib/api.js';
+import { useT } from '../lib/i18n/LanguageContext.jsx';
 
 // Aplica una receta devuelta por el backend a los campos del formulario.
 // favorite/rating/healthy no vienen de la IA (son gusto personal) — el usuario los pone a mano.
@@ -30,15 +31,16 @@ function applyRecipe(parsed, setters, ingredientStores) {
   if (typeof parsed.servings === 'number') setServings(parsed.servings);
 }
 
-const TYPE_META = [
-  ['desayuno', '🌅 Desayuno'],
-  ['almuerzo', '🥪 Almuerzo'],
-  ['cena', '🌙 Cena'],
-];
+const TYPES = ['desayuno', 'almuerzo', 'cena'];
 
-const UNITS = ['', 'unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente'];
+const UNITS_BY_LANG = {
+  es: ['', 'unidad', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'taza', 'cda', 'cdta', 'diente'],
+  en: ['', 'unit', 'g', 'kg', 'ml', 'l', 'lb', 'oz', 'cup', 'tbsp', 'tsp', 'clove'],
+};
 
 export default function MealEditor({ meal, categories = [], stores = [], ingredientStores = {}, onClose, onSave }) {
+  const { t, lang } = useT();
+  const UNITS = UNITS_BY_LANG[lang] || UNITS_BY_LANG.es;
   const defaultStoreId = stores[0]?.id || 'both';
   const [name, setName] = useState(meal.name);
   const [cat, setCat] = useState(meal.cat);
@@ -65,7 +67,7 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
 
   const setters = { setName, setCat, setEasy, setLeft, setTypes, setSteps, setIng, setVideoUrl, setSourceUrl, setKcal, setServings };
   const setIngAt = (i, patch) => setIng((p) => p.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-  const toggleType = (t) => setTypes((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]));
+  const toggleType = (tp) => setTypes((p) => (p.includes(tp) ? p.filter((x) => x !== tp) : [...p, tp]));
 
   const runImport = async (kind) => {
     setBusy(kind);
@@ -73,16 +75,16 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
     setMultiRecipes(null);
     try {
       const { recipes } =
-        kind === 'youtube' ? await importFromYoutube(url, stores) :
-        kind === 'url' ? await importFromUrl(pageUrl, stores) :
-        await extractFromText(raw, stores);
+        kind === 'youtube' ? await importFromYoutube(url, stores, lang) :
+        kind === 'url' ? await importFromUrl(pageUrl, stores, lang) :
+        await extractFromText(raw, stores, lang);
       if (recipes.length > 1) {
         setMultiRecipes(recipes); // el contenido trae varias recetas — que el usuario elija cuál
       } else {
         applyRecipe(recipes[0], setters, ingredientStores);
       }
     } catch (e) {
-      setErr(e.message || 'Algo falló. Intenta de nuevo.');
+      setErr(e.message || t('recetas.genericError'));
     } finally {
       setBusy('');
     }
@@ -94,13 +96,13 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
     try {
       const result = await estimateKcal({ name, ing, steps });
       if (result.kcal == null) {
-        setKcalErr('La IA no pudo estimarlo con los ingredientes que hay — agrega más detalle o ponlo a mano.');
+        setKcalErr(t('recetas.estimateFailed'));
       } else {
         setKcal(result.kcal);
         if (result.servings != null) setServings(result.servings);
       }
     } catch (e) {
-      setKcalErr(e.message || 'Algo falló. Intenta de nuevo.');
+      setKcalErr(e.message || t('recetas.genericError'));
     } finally {
       setBusy('');
     }
@@ -115,19 +117,19 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-20 p-0 sm:p-4" {...backdrop}>
       <div className="bg-stone-50 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-stone-50 border-b border-stone-200 z-10">
-          <h3 className="font-semibold text-stone-800">{meal.id ? 'Editar comida' : 'Nueva comida'}</h3>
+          <h3 className="font-semibold text-stone-800">{meal.id ? t('recetas.editMeal') : t('recetas.newMeal')}</h3>
           <button onClick={onClose} className="p-1 text-stone-400"><X size={20} /></button>
         </div>
 
         <div className="p-4 space-y-4">
           {/* Importar desde YouTube */}
           <div className="bg-rose-50 border border-rose-100 rounded-xl p-3">
-            <label className="text-xs font-semibold text-rose-700 flex items-center gap-1.5"><Youtube size={14} /> Importar de YouTube</label>
-            <p className="text-xs text-stone-500 mt-1">Pega el enlace del video. Traemos la descripción y los subtítulos y sacamos la receta.</p>
+            <label className="text-xs font-semibold text-rose-700 flex items-center gap-1.5"><Youtube size={14} /> {t('recetas.importYoutubeTitle')}</label>
+            <p className="text-xs text-stone-500 mt-1">{t('recetas.importYoutubeHint')}</p>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://youtube.com/watch?v=..."
+              placeholder={t('recetas.importYoutubePlaceholder')}
               className="w-full mt-2 px-3 py-2 rounded-lg border border-rose-200 bg-white text-sm"
             />
             <button
@@ -135,18 +137,18 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
               disabled={busy !== '' || !url.trim()}
               className="mt-2 w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
             >
-              {busy === 'youtube' ? 'Importando…' : <><Youtube size={16} /> Importar receta</>}
+              {busy === 'youtube' ? t('recetas.importing') : <><Youtube size={16} /> {t('recetas.importRecipe')}</>}
             </button>
           </div>
 
           {/* Importar desde página web */}
           <div className="bg-sky-50 border border-sky-100 rounded-xl p-3">
-            <label className="text-xs font-semibold text-sky-700 flex items-center gap-1.5"><LinkIcon size={14} /> Importar desde página web</label>
-            <p className="text-xs text-stone-500 mt-1">Pega el enlace de un blog de cocina o receta online. Sacamos la receta del contenido de la página.</p>
+            <label className="text-xs font-semibold text-sky-700 flex items-center gap-1.5"><LinkIcon size={14} /> {t('recetas.importWebTitle')}</label>
+            <p className="text-xs text-stone-500 mt-1">{t('recetas.importWebHint')}</p>
             <input
               value={pageUrl}
               onChange={(e) => setPageUrl(e.target.value)}
-              placeholder="https://ejemplo.com/receta-de-..."
+              placeholder={t('recetas.importWebPlaceholder')}
               className="w-full mt-2 px-3 py-2 rounded-lg border border-sky-200 bg-white text-sm"
             />
             <button
@@ -154,19 +156,19 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
               disabled={busy !== '' || !pageUrl.trim()}
               className="mt-2 w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
             >
-              {busy === 'url' ? 'Importando…' : <><LinkIcon size={16} /> Importar receta</>}
+              {busy === 'url' ? t('recetas.importing') : <><LinkIcon size={16} /> {t('recetas.importRecipe')}</>}
             </button>
           </div>
 
           {/* Extraer de texto pegado */}
           <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
-            <label className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5"><Sparkles size={14} /> Extraer con IA (texto)</label>
-            <p className="text-xs text-stone-500 mt-1">Pega el texto de la receta (caption de Instagram, etc.) o escribe el platillo.</p>
+            <label className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5"><Sparkles size={14} /> {t('recetas.extractTitle')}</label>
+            <p className="text-xs text-stone-500 mt-1">{t('recetas.extractHint')}</p>
             <textarea
               value={raw}
               onChange={(e) => setRaw(e.target.value)}
               rows={3}
-              placeholder="Ej. Salmón teriyaki con arroz…  o pega la receta completa"
+              placeholder={t('recetas.extractPlaceholder')}
               className="w-full mt-2 px-3 py-2 rounded-lg border border-emerald-200 bg-white text-sm resize-none"
             />
             <button
@@ -174,7 +176,7 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
               disabled={busy !== '' || !raw.trim()}
               className="mt-2 w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm"
             >
-              {busy === 'text' ? 'Extrayendo…' : <><Sparkles size={16} /> Extraer ingredientes</>}
+              {busy === 'text' ? t('recetas.extracting') : <><Sparkles size={16} /> {t('recetas.extractIngredients')}</>}
             </button>
           </div>
 
@@ -183,7 +185,7 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
           {multiRecipes && (
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
               <p className="text-xs font-semibold text-amber-700 mb-2">
-                Esto trae varias recetas — ¿cuál quieres importar?
+                {t('recetas.multiRecipeHint')}
               </p>
               <div className="space-y-1.5">
                 {multiRecipes.map((r, i) => (
@@ -192,7 +194,7 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
                     onClick={() => { applyRecipe(r, setters, ingredientStores); setMultiRecipes(null); }}
                     className="w-full text-left px-3 py-2 rounded-lg bg-white border border-amber-200 text-sm text-stone-700 hover:bg-amber-100"
                   >
-                    {r.name || `Receta ${i + 1}`}
+                    {r.name || t('recetas.recipeN', { n: i + 1 })}
                   </button>
                 ))}
               </div>
@@ -201,57 +203,57 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
 
           {/* Campos editables */}
           <div>
-            <label className="text-xs text-stone-500">Nombre</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Pollo a la plancha"
+            <label className="text-xs text-stone-500">{t('recetas.name')}</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('recetas.namePlaceholder')}
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white" />
           </div>
           <div>
-            <label className="text-xs text-stone-500">Categoría</label>
-            <input value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Ej. Salvadoreño" list="meal-categories"
+            <label className="text-xs text-stone-500">{t('recetas.category')}</label>
+            <input value={cat} onChange={(e) => setCat(e.target.value)} placeholder={t('recetas.categoryPlaceholder')} list="meal-categories"
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white" />
             <datalist id="meal-categories">
               {categories.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
           <div>
-            <label className="text-xs text-stone-500">¿Cuándo se sirve? (puede ser más de uno)</label>
+            <label className="text-xs text-stone-500">{t('recetas.whenServed')}</label>
             <div className="flex gap-2 mt-1">
-              {TYPE_META.map(([t, label]) => (
-                <Toggle key={t} on={types.includes(t)} set={() => toggleType(t)} label={label} />
+              {TYPES.map((tp) => (
+                <Toggle key={tp} on={types.includes(tp)} set={() => toggleType(tp)} label={t(`type.${tp}`)} />
               ))}
             </div>
             {types.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">Sin ningún tipo marcado, esta receta no va a aparecer en los pickers de la semana.</p>
+              <p className="text-xs text-amber-600 mt-1">{t('recetas.noTypeWarning')}</p>
             )}
           </div>
           <div className="flex gap-2">
-            <Toggle on={easy} set={setEasy} label="⚡ Fácil" />
-            <Toggle on={left} set={setLeft} label="Rinde" />
-            <Toggle on={healthy} set={setHealthy} label="🥗 Saludable" />
+            <Toggle on={easy} set={setEasy} label={t('recetas.easy')} />
+            <Toggle on={left} set={setLeft} label={t('recetas.rinde')} />
+            <Toggle on={healthy} set={setHealthy} label={t('semana.healthy')} />
           </div>
           <div className="flex items-center justify-between gap-2 bg-white border border-stone-200 rounded-lg px-3 py-2">
-            <Toggle on={favorite} set={setFavorite} label="❤️ Favorito" />
+            <Toggle on={favorite} set={setFavorite} label={t('semana.favorite')} />
             <div className="flex items-center gap-2 pl-2">
-              <span className="text-xs text-stone-500 whitespace-nowrap">Calificación</span>
+              <span className="text-xs text-stone-500 whitespace-nowrap">{t('recetas.rating')}</span>
               <Stars value={rating} onChange={setRating} />
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-stone-500">Calorías totales de la receta y porciones que rinde</label>
+            <label className="text-xs text-stone-500">{t('recetas.kcalLabel')}</label>
             <div className="flex gap-2 mt-1">
               <input
                 type="number" min="0" step="1"
                 value={kcal ?? ''}
                 onChange={(e) => setKcal(e.target.value === '' ? null : Number(e.target.value))}
-                placeholder="kcal totales"
+                placeholder={t('recetas.kcalTotal')}
                 className="w-28 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
               />
               <input
                 type="number" min="1" step="1"
                 value={servings ?? ''}
                 onChange={(e) => setServings(e.target.value === '' ? null : Number(e.target.value))}
-                placeholder="porciones"
+                placeholder={t('recetas.servings')}
                 className="w-24 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
               />
               <button
@@ -259,46 +261,46 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
                 disabled={busy !== '' || !hasIngredients}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-stone-200 text-stone-600 hover:bg-stone-100 disabled:opacity-50 text-sm font-medium rounded-lg"
               >
-                {busy === 'kcal' ? 'Estimando…' : <><Sparkles size={14} /> Estimar con IA</>}
+                {busy === 'kcal' ? t('recetas.estimating') : <><Sparkles size={14} /> {t('recetas.estimateAI')}</>}
               </button>
             </div>
             {kcal != null && servings != null && servings > 0 && (
-              <p className="text-xs text-emerald-700 mt-1">~{Math.round(kcal / servings)} kcal por porción ({servings} porciones)</p>
+              <p className="text-xs text-emerald-700 mt-1">{t('recetas.perServing', { kcal: Math.round(kcal / servings), servings })}</p>
             )}
             {!hasIngredients ? (
-              <p className="text-xs text-amber-600 mt-1">Agrega al menos un ingrediente primero para poder estimar.</p>
+              <p className="text-xs text-amber-600 mt-1">{t('recetas.needIngredients')}</p>
             ) : (
-              <p className="text-xs text-stone-400 mt-1">Estimación aproximada, no un dato médico.</p>
+              <p className="text-xs text-stone-400 mt-1">{t('recetas.estimateNote')}</p>
             )}
             {kcalErr && <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 mt-1.5">{kcalErr}</p>}
           </div>
 
           <div>
-            <label className="text-xs text-stone-500 flex items-center gap-1"><Youtube size={12} /> Video de YouTube</label>
-            <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..."
+            <label className="text-xs text-stone-500 flex items-center gap-1"><Youtube size={12} /> {t('recetas.videoLabel')}</label>
+            <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder={t('recetas.importYoutubePlaceholder')}
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm" />
           </div>
           <div>
-            <label className="text-xs text-stone-500 flex items-center gap-1"><LinkIcon size={12} /> Página de origen</label>
-            <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://ejemplo.com/receta-de-..."
+            <label className="text-xs text-stone-500 flex items-center gap-1"><LinkIcon size={12} /> {t('recetas.sourceLabel')}</label>
+            <input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder={t('recetas.importWebPlaceholder')}
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm" />
           </div>
 
           {/* Ingredientes */}
           <div>
-            <label className="text-xs text-stone-500">Ingredientes: cantidad, unidad y dónde comprarlos</label>
+            <label className="text-xs text-stone-500">{t('recetas.ingredientsLabel')}</label>
             <div className="space-y-2 mt-1">
               {ing.map((g, i) => (
                 <div key={i} className="p-2 rounded-lg border border-stone-200 bg-white space-y-1.5">
                   <div className="flex gap-2">
-                    <input value={g.item} onChange={(e) => setIngAt(i, { item: e.target.value })} placeholder="Ingrediente"
+                    <input value={g.item} onChange={(e) => setIngAt(i, { item: e.target.value })} placeholder={t('recetas.ingredientPlaceholder')}
                       className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm" />
                     <button onClick={() => setIng((p) => p.filter((_, j) => j !== i))} className="px-2 text-stone-400 hover:text-rose-600"><Trash2 size={16} /></button>
                   </div>
                   <div className="flex gap-1.5 items-center">
                     <input type="number" min="0" step="any" value={g.qty ?? ''}
                       onChange={(e) => setIngAt(i, { qty: e.target.value === '' ? null : Number(e.target.value) })}
-                      placeholder="Cant."
+                      placeholder={t('recetas.qtyPlaceholder')}
                       className="w-16 px-2 py-1.5 rounded-lg border border-stone-200 bg-white text-sm" />
                     <select value={g.unit || ''} onChange={(e) => setIngAt(i, { unit: e.target.value })}
                       className="w-20 px-1 py-1.5 rounded-lg border border-stone-200 bg-white text-sm">
@@ -306,29 +308,29 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
                     </select>
                     <select value={g.store} onChange={(e) => setIngAt(i, { store: e.target.value })}
                       className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-stone-200 bg-white text-sm">
-                      {stores.map((s) => <option key={s.id} value={s.id}>{s.label || '(sin nombre)'}</option>)}
-                      <option value="both">Cualquier tienda</option>
+                      {stores.map((s) => <option key={s.id} value={s.id}>{s.label || t('recetas.noName')}</option>)}
+                      <option value="both">{t('recetas.anyStore')}</option>
                     </select>
                     <label className="flex items-center gap-1 text-xs text-stone-500 shrink-0 whitespace-nowrap">
                       <input type="checkbox" checked={!!g.pantry} onChange={(e) => setIngAt(i, { pantry: e.target.checked })} />
-                      Despensa
+                      {t('recetas.pantryCheckbox')}
                     </label>
                   </div>
                 </div>
               ))}
             </div>
             <button onClick={() => setIng((p) => [...p, { item: '', store: defaultStoreId, qty: null, unit: '', pantry: false }])}
-              className="mt-2 text-sm text-emerald-700 font-medium flex items-center gap-1"><Plus size={14} /> Agregar ingrediente</button>
+              className="mt-2 text-sm text-emerald-700 font-medium flex items-center gap-1"><Plus size={14} /> {t('recetas.addIngredient')}</button>
           </div>
 
           {/* Pasos (uno por línea) */}
           <div>
-            <label className="text-xs text-stone-500">Pasos (uno por línea)</label>
+            <label className="text-xs text-stone-500">{t('recetas.stepsLabel')}</label>
             <textarea
               value={steps.join('\n')}
               onChange={(e) => setSteps(e.target.value.split('\n'))}
               rows={4}
-              placeholder="1. Sazonar el pollo&#10;2. Calentar el sartén…"
+              placeholder={t('recetas.stepsPlaceholder')}
               className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm resize-none"
             />
           </div>
@@ -351,7 +353,7 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
             }
             className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 rounded-xl"
           >
-            Guardar
+            {t('recetas.save')}
           </button>
         </div>
       </div>

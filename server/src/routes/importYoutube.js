@@ -8,14 +8,14 @@ import { getRecipeText } from '../services/youtube.js';
 const router = Router();
 
 router.post('/', async (req, res) => {
-  const { url, stores } = req.body || {};
+  const { url, stores, lang } = req.body || {};
   if (!url || !url.trim()) {
     return res.status(400).json({ error: 'Falta la URL de YouTube.' });
   }
   try {
     const source = await getRecipeText(url);   // paso 1: conseguir el texto
-    const raw = await complete(buildPrompt(source, stores)); // paso 2: IA -> JSON
-    const recipes = parseRecipes(raw, stores).map((r) => ({ ...r, videoUrl: url }));
+    const raw = await complete(buildPrompt(source, stores, lang)); // paso 2: IA -> JSON
+    const recipes = parseRecipes(raw, stores, lang).map((r) => ({ ...r, videoUrl: url }));
     res.json({ recipes });
   } catch (e) {
     console.error('import-youtube error:', e);

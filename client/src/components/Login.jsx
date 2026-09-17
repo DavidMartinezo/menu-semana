@@ -2,13 +2,18 @@ import { useState } from 'react';
 import { signInWithGoogle, signInAsGuest } from '../lib/auth.js';
 import { joinHousehold } from '../lib/userStorage.js';
 import { track } from '../lib/analytics.js';
+import { useT } from '../lib/i18n/LanguageContext.jsx';
+import LanguageToggle from './LanguageToggle.jsx';
 
-function mapAuthError(code) {
-  if (code === 'auth/popup-closed-by-user') return 'Cerraste la ventana antes de terminar de iniciar sesión.';
-  if (code === 'auth/popup-blocked') return 'El navegador bloqueó la ventana emergente. Permite popups e inténtalo de nuevo.';
-  if (code === 'auth/unauthorized-domain') return 'Este dominio no está autorizado en Firebase (Authentication > Settings > Authorized domains).';
-  if (code === 'auth/operation-not-allowed') return 'El login con Google no está habilitado en Firebase (Authentication > Sign-in method).';
-  return 'No se pudo iniciar sesión. Inténtalo de nuevo.';
+function useAuthErrorMapper() {
+  const { t } = useT();
+  return (code) => {
+    if (code === 'auth/popup-closed-by-user') return t('errors.popupClosed');
+    if (code === 'auth/popup-blocked') return t('errors.popupBlocked');
+    if (code === 'auth/unauthorized-domain') return t('errors.unauthorizedDomain');
+    if (code === 'auth/operation-not-allowed') return t('errors.operationNotAllowed');
+    return t('errors.generic');
+  };
 }
 
 // Logo oficial de Google ("G" multicolor), en línea como SVG para no depender de ninguna librería.
@@ -24,6 +29,8 @@ function GoogleIcon() {
 }
 
 export default function Login() {
+  const { t } = useT();
+  const mapAuthError = useAuthErrorMapper();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingGuest, setLoadingGuest] = useState(false);
@@ -79,29 +86,30 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-sm p-8 max-w-sm w-full text-center">
-        <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">Menú de la semana</h1>
-        <p className="text-sm text-stone-500 mt-2 mb-6">Inicia sesión para ver tus recetas y tu plan.</p>
+      <div className="bg-white rounded-2xl shadow-sm p-8 max-w-sm w-full text-center relative">
+        <LanguageToggle className="absolute top-4 right-4" />
+        <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">{t('app.title')}</h1>
+        <p className="text-sm text-stone-500 mt-2 mb-6">{t('login.subtitle')}</p>
         <button
           onClick={handleClick}
           disabled={busy}
           className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-stone-50 disabled:opacity-50 text-stone-700 font-semibold py-3 rounded-xl shadow-sm border border-stone-200"
         >
           {!loading && <GoogleIcon />}
-          {loading ? 'Conectando… (puede tardar un poco la primera vez)' : 'Continuar con Google'}
+          {loading ? t('login.connectingSlow') : t('login.continueGoogle')}
         </button>
         <button
           onClick={handleGuest}
           disabled={busy}
           className="w-full mt-3 bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-600 font-medium py-2.5 rounded-xl"
         >
-          {loadingGuest ? 'Conectando…' : 'Usar sin cuenta'}
+          {loadingGuest ? t('login.connecting') : t('login.useWithoutAccount')}
         </button>
-        <p className="text-xs text-stone-400 mt-2">Como invitado nada se pierde en tu navegador, pero no lo ves desde otro dispositivo.</p>
+        <p className="text-xs text-stone-400 mt-2">{t('login.guestNote')}</p>
 
         {!joinOpen ? (
           <button onClick={() => setJoinOpen(true)} className="w-full mt-3 text-xs text-stone-400 hover:text-stone-600 underline">
-            ¿Tienes un código para unirte a un hogar compartido?
+            {t('login.haveCode')}
           </button>
         ) : (
           <div className="mt-3 text-left">
@@ -109,7 +117,7 @@ export default function Login() {
               <input
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="Pega el código aquí"
+                placeholder={t('login.pasteCode')}
                 className="flex-1 px-3 py-2 rounded-lg border border-stone-200 text-sm"
               />
               <button
@@ -117,10 +125,10 @@ export default function Login() {
                 disabled={busy || !joinCode.trim()}
                 className="px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white text-sm font-medium"
               >
-                {loadingJoin ? '…' : 'Unirme'}
+                {loadingJoin ? t('login.joining') : t('login.join')}
               </button>
             </div>
-            <p className="text-xs text-stone-400 mt-1.5">Entra como invitado, ya unido a esos datos — misma limitación: no se ve desde otro dispositivo sin volver a pegar el código.</p>
+            <p className="text-xs text-stone-400 mt-1.5">{t('login.joinNote')}</p>
           </div>
         )}
         {error && <p className="mt-4 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2">{error}</p>}

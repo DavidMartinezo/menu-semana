@@ -64,9 +64,9 @@ function formatIngredientLine(ing) {
 // Se listan todos los ingredientes, incluidos los de despensa: "pantry" significa "ya lo
 // tengo en casa", no "no necesita prep", y el punto del recordatorio es no adivinar qué
 // necesita descongelarse o cortarse — solo mostrar la lista completa para que el usuario decida.
-function buildAlarmDescription(mealName, ingredients) {
+function buildAlarmDescription(mealName, ingredients, t) {
   const lines = ingredients.map(formatIngredientLine);
-  return [`Prepara para mañana: ${mealName}`, ...lines].join('\n');
+  return [t('ics.prepareTomorrow', { name: mealName }), ...lines].join('\n');
 }
 
 function buildEventLines({ uid, dtStart, dtEnd, summary, description, alarmDescription, alarmTrigger }) {
@@ -96,7 +96,7 @@ function buildEventLines({ uid, dtStart, dtEnd, summary, description, alarmDescr
 // líneas más largas (DESCRIPTION con varios ingredientes) rondan 150-250 caracteres, y los
 // calendarios modernos (Apple, Google, Outlook) las toleran igual. Si algún día un import
 // real falla por esto, folding es lo primero a agregar.
-export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan = {}, mealById }) {
+export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan = {}, mealById, t }) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -115,7 +115,7 @@ export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan = {}, me
         uid: makeUID(isoDate, 'desayuno'),
         dtStart: toICSDateTime(isoDate, BREAKFAST_START),
         dtEnd: toICSDateTime(isoDate, BREAKFAST_END),
-        summary: `Desayuno: ${bf.name}`,
+        summary: t('ics.breakfast', { name: bf.name }),
       }));
     }
 
@@ -127,7 +127,7 @@ export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan = {}, me
         uid: makeUID(isoDate, 'almuerzo'),
         dtStart: toICSDateTime(isoDate, LUNCH_START),
         dtEnd: toICSDateTime(isoDate, LUNCH_END),
-        summary: `Almuerzo: ${lunch.name}`,
+        summary: t('ics.lunch', { name: lunch.name }),
       }));
     }
 
@@ -138,9 +138,9 @@ export function buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan = {}, me
         uid: makeUID(isoDate, 'cena'),
         dtStart: toICSDateTime(isoDate, DINNER_START),
         dtEnd: toICSDateTime(isoDate, DINNER_END),
-        summary: `Cena: ${meal.name}`,
+        summary: t('ics.dinner', { name: meal.name }),
         description: ing.length ? ing.map(formatIngredientLine).join(', ') : '',
-        alarmDescription: buildAlarmDescription(meal.name, ing),
+        alarmDescription: buildAlarmDescription(meal.name, ing, t),
         alarmTrigger,
       }));
     }

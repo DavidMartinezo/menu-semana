@@ -2,31 +2,32 @@ import { useState } from 'react';
 import { ShoppingCart, Check, Plus, Trash2 } from 'lucide-react';
 import { DAYS, storeMeta } from '../data/seed.js';
 import { CopyBtn } from './ui.jsx';
+import { useT } from '../lib/i18n/LanguageContext.jsx';
 
 // Recordatorio pasivo de "ya compraste esto" — no resta cantidades ni oculta nada, solo
 // refresca la memoria de que probablemente todavía tengas algo de eso en la alacena. Deja de
 // mostrarse pasado este margen, para no acumular recordatorios ya inútiles.
 const RECENT_DAYS = 21;
-function lastBoughtLabel(item, purchaseHistory) {
+function lastBoughtLabel(item, purchaseHistory, t) {
   const dateStr = purchaseHistory[item.toLowerCase().trim()];
   if (!dateStr) return null;
   const days = Math.floor((Date.now() - new Date(dateStr + 'T00:00:00').getTime()) / 86400000);
   if (days < 0 || days > RECENT_DAYS) return null;
-  if (days === 0) return 'comprado hoy';
-  if (days === 1) return 'comprado ayer';
-  if (days < 7) return `comprado hace ${days} días`;
+  if (days === 0) return t('lista.boughtToday');
+  if (days === 1) return t('lista.boughtYesterday');
+  if (days < 7) return t('lista.boughtDaysAgo', { days });
   const weeks = Math.round(days / 7);
-  return `comprado hace ${weeks} semana${weeks > 1 ? 's' : ''}`;
+  return t('lista.boughtWeeksAgo', { weeks, plural: weeks > 1 ? 's' : '' });
 }
-
-// Tiendas disponibles para un producto agregado a mano: las del hogar + la opción fija de
-// "cualquier tienda" (mismo id reservado `both` que ya usan los ingredientes de receta).
-const storeOptions = (stores) => [...stores, { id: 'both', label: 'Cualquier tienda' }];
 
 export default function ListaTab({
   shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased,
   extraItems, addExtraItem, toggleExtraItem, removeExtraItem,
 }) {
+  const { t, lang } = useT();
+  // Tiendas disponibles para un producto agregado a mano: las del hogar + la opción fija de
+  // "cualquier tienda" (mismo id reservado `both` que ya usan los ingredientes de receta).
+  const storeOptions = (stores) => [...stores, { id: 'both', label: t('recetas.anyStore') }];
   const [copied, setCopied] = useState('');
   const [purchaseDone, setPurchaseDone] = useState(false);
   const [newItemName, setNewItemName] = useState('');
@@ -35,7 +36,7 @@ export default function ListaTab({
 
   // Nombres ya conocidos (aunque estén marcados/tachados) para sugerir mientras se escribe —
   // así no hay que volver a teclear algo que ya se agregó antes.
-  const knownItemNames = [...new Set(extraItems.map((x) => x.name))].sort((a, b) => a.localeCompare(b, 'es'));
+  const knownItemNames = [...new Set(extraItems.map((x) => x.name))].sort((a, b) => a.localeCompare(b, lang));
 
   // Si el nombre ya existe en la lista, no se duplica: si estaba tachado (comprado) se
   // desmarca para "pedirlo" de nuevo; si ya estaba activo, no hace falta nada.
@@ -81,7 +82,7 @@ export default function ListaTab({
   const qtyPrefix = (x) => (x.hasQty ? `${x.qty}${x.unit ? ' ' + x.unit : ''} ` : '');
 
   const byStoreText = () => {
-    let out = '🛒 LISTA DE COMPRAS\n';
+    let out = `${t('lista.header')}\n`;
     for (const { id, label, items } of shopping.byStore) {
       const extras = extraItems.filter((x) => x.store === id);
       if (!items.length && !extras.length) continue;
@@ -90,7 +91,7 @@ export default function ListaTab({
       extras.forEach((x) => (out += `☐ ${x.name}\n`));
     }
     if (shopping.pantry.length) {
-      out += '\n— DE DESPENSA (revisar si hay) —\n';
+      out += `\n— ${t('lista.pantryHeader')} —\n`;
       shopping.pantry.forEach((x) => (out += `☐ ${x.item}\n`));
     }
     return out.trim();
@@ -103,7 +104,7 @@ export default function ListaTab({
       out += `${m.name}\n`;
       m.ing.forEach((g) => {
         const qty = typeof g.qty === 'number' ? `${g.qty}${g.unit ? ' ' + g.unit : ''} ` : '';
-        out += `  • ${qty}${g.item} (${storeMeta(g.store, stores).label}${g.pantry ? ', despensa' : ''})\n`;
+        out += `  • ${qty}${g.item} (${storeMeta(g.store, stores).label}${g.pantry ? `, ${t('lista.despensa').toLowerCase()}` : ''})\n`;
       });
       out += '\n';
     };
@@ -114,7 +115,7 @@ export default function ListaTab({
       addMeal(mealById[plan[d.key]]);
     }
     if (extraItems.length) {
-      out += 'Otros\n';
+      out += `${t('lista.other')}\n`;
       extraItems.forEach((x) => (out += `  • ${x.name} (${storeMeta(x.store, stores).label})\n`));
     }
     return out.trim();
@@ -124,7 +125,7 @@ export default function ListaTab({
     return (
       <div className="mt-10 text-center text-stone-400">
         <ShoppingCart size={32} className="mx-auto mb-2 opacity-40" />
-        Elige cenas en la pestaña <span className="font-medium text-stone-500">Semana</span> y aquí aparece la lista lista para tus tiendas.
+        {t('lista.emptyHint')}
       </div>
     );
   }
@@ -132,18 +133,18 @@ export default function ListaTab({
   return (
     <div className="mt-4 space-y-4">
       <div className="flex gap-2">
-        <CopyBtn label="Copiar por tienda" active={copied === 'tienda'} onClick={() => copyText(byStoreText(), 'tienda')} />
-        <CopyBtn label="Copiar por receta (Keep)" active={copied === 'receta'} onClick={() => copyText(byRecipeText(), 'receta')} />
+        <CopyBtn label={t('lista.copyByStore')} active={copied === 'tienda'} onClick={() => copyText(byStoreText(), 'tienda')} />
+        <CopyBtn label={t('lista.copyByRecipe')} active={copied === 'receta'} onClick={() => copyText(byRecipeText(), 'receta')} />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-3">
-        <p className="text-xs text-stone-500 mb-2">Agregar algo que no esté en las recetas</p>
+        <p className="text-xs text-stone-500 mb-2">{t('lista.addExtraHint')}</p>
         <div className="flex gap-2">
           <input
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submitNewItem(); }}
-            placeholder="Ej. Papel higiénico"
+            placeholder={t('lista.addExtraPlaceholder')}
             list="extra-item-names"
             className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm"
           />
@@ -168,7 +169,7 @@ export default function ListaTab({
         disabled={!anyChecked}
         className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed ${purchaseDone ? 'bg-emerald-600 text-white' : 'bg-white text-stone-600 hover:bg-stone-100'}`}
       >
-        {purchaseDone ? <><Check size={16} /> ¡Registrado!</> : 'Marcar compra como hecha'}
+        {purchaseDone ? <><Check size={16} /> {t('lista.markedDone')}</> : t('lista.markDone')}
       </button>
 
       {shopping.byStore.map(({ id, label, cls, items }) => {
@@ -180,7 +181,7 @@ export default function ListaTab({
             <ul className="divide-y divide-stone-100">
               {items.map((x) => {
                 const on = checked[x.key];
-                const reminder = !on && lastBoughtLabel(x.item, purchaseHistory);
+                const reminder = !on && lastBoughtLabel(x.item, purchaseHistory, t);
                 return (
                   <li key={x.key} onClick={() => toggleChecked(x.key)}
                     className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">
@@ -197,7 +198,7 @@ export default function ListaTab({
                 );
               })}
               {extras.map((x) => {
-                const reminder = !x.checked && lastBoughtLabel(x.name, purchaseHistory);
+                const reminder = !x.checked && lastBoughtLabel(x.name, purchaseHistory, t);
                 return (
                   <li key={x.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50">
                     <span
@@ -221,11 +222,11 @@ export default function ListaTab({
 
       {shopping.pantry.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 font-semibold text-sm bg-stone-100 text-stone-500">De despensa (revisar si hay) · {shopping.pantry.length}</div>
+          <div className="px-4 py-2.5 font-semibold text-sm bg-stone-100 text-stone-500">{t('lista.pantry')} · {shopping.pantry.length}</div>
           <ul className="divide-y divide-stone-100">
             {shopping.pantry.map((x) => {
               const on = checked[x.key];
-              const reminder = !on && lastBoughtLabel(x.item, purchaseHistory);
+              const reminder = !on && lastBoughtLabel(x.item, purchaseHistory, t);
               return (
                 <li key={x.key} onClick={() => toggleChecked(x.key)}
                   className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50">

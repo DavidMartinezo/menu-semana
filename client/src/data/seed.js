@@ -65,13 +65,13 @@ export const SEED_MEALS = [
 
 // Los días no traen "ocupado" fijo: el usuario los marca desde la UI (ver busyDays en App.jsx).
 export const DAYS = [
-  { key: 'lun', label: 'Lunes' },
-  { key: 'mar', label: 'Martes' },
-  { key: 'mie', label: 'Miércoles' },
-  { key: 'jue', label: 'Jueves' },
-  { key: 'vie', label: 'Viernes' },
-  { key: 'sab', label: 'Sábado' },
-  { key: 'dom', label: 'Domingo' },
+  { key: 'lun' },
+  { key: 'mar' },
+  { key: 'mie' },
+  { key: 'jue' },
+  { key: 'vie' },
+  { key: 'sab' },
+  { key: 'dom' },
 ];
 
 // Forma de una semana sin nada planeado. Vive acá (y no en App.jsx) porque WeeksList.jsx

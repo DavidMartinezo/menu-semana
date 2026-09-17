@@ -4,11 +4,13 @@ import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
 import { buildWeekICS, downloadICS } from '../lib/ics.js';
 import { Autocomplete, StarsDisplay, ConfirmDialog } from './ui.jsx';
+import { useT } from '../lib/i18n/LanguageContext.jsx';
 
 export default function SemanaTab({
   meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
   busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList, openView,
 }) {
+  const { t, lang } = useT();
   const cenaCandidates = meals.filter((m) => m.types.includes('cena'));
   const bfCandidates = meals.filter((m) => m.types.includes('desayuno'));
   const lunchCandidates = meals.filter((m) => m.types.includes('almuerzo'));
@@ -42,14 +44,14 @@ export default function SemanaTab({
   }, [plan, bfPlan, lunchPlan, mealById]);
 
   const handleExportICS = () => {
-    const ics = buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan, mealById });
+    const ics = buildWeekICS({ DAYS, weekStart, plan, bfPlan, lunchPlan, mealById, t });
     downloadICS(ics, `menu-semana-${weekStart}.ics`);
   };
 
   return (
     <div className="mt-4">
       <div className="flex items-center gap-2 mb-3 text-sm flex-wrap">
-        <span className="text-stone-400">Semana del</span>
+        <span className="text-stone-400">{t('semana.weekOf')}</span>
         <input
           type="date"
           value={weekStart}
@@ -57,11 +59,11 @@ export default function SemanaTab({
           className="px-2 py-1 rounded-lg border border-stone-200 bg-white text-stone-700"
         />
         <button onClick={openWeeksList} className="text-xs text-emerald-700 font-medium flex items-center gap-1 hover:underline">
-          <CalendarDays size={14} /> Mis semanas
+          <CalendarDays size={14} /> {t('semana.myWeeks')}
         </button>
         {weekKcal > 0 && (
           <span className="text-xs text-stone-400">
-            ~{weekKcal.toLocaleString('es')} kcal totales la semana · ~{avgDayKcal.toLocaleString('es')} kcal/día promedio
+            {t('semana.weekKcal', { total: weekKcal.toLocaleString(lang), avg: avgDayKcal.toLocaleString(lang) })}
           </span>
         )}
       </div>
@@ -71,7 +73,7 @@ export default function SemanaTab({
           onClick={openWizard}
           className="w-full sm:w-64 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl shadow-sm transition"
         >
-          <Shuffle size={18} /> Sorpréndeme
+          <Shuffle size={18} /> {t('semana.surprise')}
         </button>
 
         <div className="flex gap-4 px-0.5">
@@ -82,7 +84,7 @@ export default function SemanaTab({
             <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
               <Trash2 size={15} />
             </span>
-            <span className="text-[10px]">Limpiar</span>
+            <span className="text-[10px]">{t('semana.clear')}</span>
           </button>
           <button
             onClick={handleExportICS}
@@ -92,7 +94,7 @@ export default function SemanaTab({
             <span className="w-9 h-9 rounded-lg bg-white shadow-sm border border-stone-100 flex items-center justify-center">
               <CalendarPlus size={15} />
             </span>
-            <span className="text-[10px]">Calendario</span>
+            <span className="text-[10px]">{t('semana.calendar')}</span>
           </button>
         </div>
       </div>
@@ -116,63 +118,63 @@ export default function SemanaTab({
           return (
             <div key={d.key} className="bg-white rounded-xl shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="font-semibold text-stone-800">{d.label}</span>
+                <span className="font-semibold text-stone-800">{t(`days.${d.key}`)}</span>
                 <span className="text-xs text-stone-400">{formatShort(addDays(weekStart, i))}</span>
-                {dayKcal > 0 && <span className="text-xs text-stone-400">· ~{dayKcal.toLocaleString('es')} kcal totales del día</span>}
+                {dayKcal > 0 && <span className="text-xs text-stone-400">{t('semana.dayKcal', { kcal: dayKcal.toLocaleString(lang) })}</span>}
                 <button
                   onClick={() => toggleBusyDay(d.key)}
                   className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition ${busy ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-400 hover:text-stone-600'}`}
                 >
-                  <Clock size={12} /> {busy ? 'Ocupado · solo fáciles' : 'Marcar ocupado'}
+                  <Clock size={12} /> {busy ? t('semana.busy') : t('semana.markBusy')}
                 </button>
                 {busy && (
                   <button
                     onClick={() => setShowAllDay((p) => ({ ...p, [d.key]: !p[d.key] }))}
                     className="text-xs text-stone-400 underline hover:text-stone-600"
                   >
-                    {filterActive ? 'Mostrar todas' : 'Solo fáciles'}
+                    {filterActive ? t('semana.showAll') : t('semana.easyOnly')}
                   </button>
                 )}
               </div>
 
               <label className="flex items-center justify-between text-xs text-stone-400 mb-1">
-                Desayuno
-                {bf && <button onClick={() => openView(bf)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> Ver receta</button>}
+                {t('semana.breakfast')}
+                {bf && <button onClick={() => openView(bf)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> {t('semana.viewRecipe')}</button>}
               </label>
               <Autocomplete
                 value={bfPlan[d.key] || ''}
                 onChange={(v) => setBfPlan((p) => ({ ...p, [d.key]: v }))}
-                placeholder="Elegir desayuno"
+                placeholder={t('semana.chooseBreakfast')}
                 options={bfCandidates.map((m) => ({ value: m.id, label: m.name }))}
               />
 
               <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
-                <span>Almuerzo{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case"> · aprovechando la cena de ayer: {prevCena.name}</span>}</span>
-                {lunch && <button onClick={() => openView(lunch)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case shrink-0"><Eye size={14} /> Ver receta</button>}
+                <span>{t('semana.lunch')}{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case">{t('semana.leftoverNote', { name: prevCena.name })}</span>}</span>
+                {lunch && <button onClick={() => openView(lunch)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case shrink-0"><Eye size={14} /> {t('semana.viewRecipe')}</button>}
               </label>
               <Autocomplete
                 value={lunchPlan[d.key] || ''}
                 onChange={(v) => setLunchPlan((p) => ({ ...p, [d.key]: v }))}
-                placeholder={showLeftover ? `Aprovechar la cena de ayer: ${prevCena.name} (o elegir otra)` : 'Elegir almuerzo (o dejar sin definir)'}
+                placeholder={showLeftover ? t('semana.leftoverPlaceholder', { name: prevCena.name }) : t('semana.chooseLunch')}
                 options={lunchCandidates.map((m) => ({ value: m.id, label: m.name }))}
-                emptyText="Aún no tienes recetas marcadas como almuerzo — agrégaselo en Recetas"
+                emptyText={t('semana.noLunchRecipes')}
               />
 
               <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
-                Cena
-                {cena && <button onClick={() => openView(cena)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> Ver receta</button>}
+                {t('semana.dinner')}
+                {cena && <button onClick={() => openView(cena)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> {t('semana.viewRecipe')}</button>}
               </label>
               <Autocomplete
                 value={plan[d.key] || ''}
                 onChange={(v) => setPlan((p) => ({ ...p, [d.key]: v }))}
-                placeholder="Elegir cena"
+                placeholder={t('semana.chooseDinner')}
                 options={
                   filterActive
                     ? easyMeals.map((m) => ({ value: m.id, label: m.name }))
                     : busy
                     ? [
-                        ...easyMeals.map((m) => ({ value: m.id, label: m.name, group: '⚡ Fáciles (recomendadas)' })),
-                        ...otherMeals.map((m) => ({ value: m.id, label: m.name, group: 'Otras' })),
+                        ...easyMeals.map((m) => ({ value: m.id, label: m.name, group: t('semana.easyGroup') })),
+                        ...otherMeals.map((m) => ({ value: m.id, label: m.name, group: t('semana.otherGroup') })),
                       ]
                     : cenaCandidates.map((m) => ({ value: m.id, label: m.name }))
                 }
@@ -181,23 +183,23 @@ export default function SemanaTab({
               {cena && (
                 <>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-xs items-center">
-                    {cena.favorite && <span className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">❤️ Favorito</span>}
+                    {cena.favorite && <span className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">{t('semana.favorite')}</span>}
                     {cena.rating > 0 && <span className="bg-amber-50 px-2 py-0.5 rounded-full"><StarsDisplay value={cena.rating} /></span>}
-                    {cena.healthy && <span className="bg-lime-50 text-lime-700 px-2 py-0.5 rounded-full">🥗 Saludable</span>}
-                    {cena.left && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">Rinde para el almuerzo</span>}
-                    {cena.kcal != null && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">~{cena.kcal} kcal (receta completa)</span>}
+                    {cena.healthy && <span className="bg-lime-50 text-lime-700 px-2 py-0.5 rounded-full">{t('semana.healthy')}</span>}
+                    {cena.left && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">{t('semana.leftoverTag')}</span>}
+                    {cena.kcal != null && <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">{t('semana.kcalRecipe', { kcal: cena.kcal })}</span>}
                     {cena.kcal != null && cena.servings > 0 && (
-                      <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">~{Math.round(cena.kcal / cena.servings)} kcal/porción</span>
+                      <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">{t('semana.kcalServing', { kcal: Math.round(cena.kcal / cena.servings) })}</span>
                     )}
                     {cena.videoUrl && (
                       <a href={cena.videoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-rose-600 hover:underline px-2 py-0.5">
-                        <Youtube size={13} /> Ver video
+                        <Youtube size={13} /> {t('semana.watchVideo')}
                       </a>
                     )}
                   </div>
                   {cena.steps?.length > 0 && (
                     <details className="mt-2">
-                      <summary className="text-xs text-emerald-700 font-medium cursor-pointer">Ver pasos</summary>
+                      <summary className="text-xs text-emerald-700 font-medium cursor-pointer">{t('semana.viewSteps')}</summary>
                       <ol className="mt-1 ml-4 list-decimal text-xs text-stone-600 space-y-0.5">
                         {cena.steps.map((s, k) => <li key={k}>{s}</li>)}
                       </ol>
@@ -212,9 +214,9 @@ export default function SemanaTab({
 
       {confirmClear && (
         <ConfirmDialog
-          title="Vaciar semana"
-          message="¿Vaciar toda la semana? No se puede deshacer."
-          confirmLabel="Vaciar"
+          title={t('semana.confirmClearTitle')}
+          message={t('semana.confirmClearMsg')}
+          confirmLabel={t('semana.confirmClearBtn')}
           onConfirm={() => { clearWeek(); setConfirmClear(false); }}
           onCancel={() => setConfirmClear(false)}
         />

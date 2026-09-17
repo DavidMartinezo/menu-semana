@@ -1,6 +1,7 @@
 // Componentes de UI reutilizables (pequeños y sin estado propio salvo lo mínimo).
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Copy, Check } from 'lucide-react';
+import { useT } from '../lib/i18n/LanguageContext.jsx';
 
 // Cierra un modal al hacer click en el fondo oscuro — pero solo si el click "empezó y terminó"
 // ahí mismo. Sin esto, arrastrar el mouse para seleccionar texto dentro del modal y soltar el
@@ -27,25 +28,26 @@ export function useLockBodyScroll() {
 
 // Confirmación propia para acciones que no se pueden deshacer — en vez del confirm() nativo
 // del navegador, que sale con el dominio, en inglés, y sin nada del estilo de la app.
-export function ConfirmDialog({ title = 'Confirmar', message, confirmLabel = 'Confirmar', danger = true, onConfirm, onCancel }) {
+export function ConfirmDialog({ title, message, confirmLabel, danger = true, onConfirm, onCancel }) {
+  const { t } = useT();
   const backdrop = useBackdropClose(onCancel);
   useLockBodyScroll();
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-30 p-0 sm:p-4" {...backdrop}>
       <div className="bg-stone-50 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-5">
-          <h3 className="font-semibold text-stone-800 mb-1.5">{title}</h3>
+          <h3 className="font-semibold text-stone-800 mb-1.5">{title ?? t('confirm.default')}</h3>
           <p className="text-sm text-stone-600">{message}</p>
         </div>
         <div className="p-4 pt-0 flex gap-2">
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-stone-600 bg-white border border-stone-200">
-            Cancelar
+            {t('confirm.cancel')}
           </button>
           <button
             onClick={onConfirm}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white ${danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-700 hover:bg-emerald-800'}`}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('confirm.default')}
           </button>
         </div>
       </div>
@@ -56,7 +58,8 @@ export function ConfirmDialog({ title = 'Confirmar', message, confirmLabel = 'Co
 // Combobox con autocompletado: escribe para filtrar la lista, click o Enter para elegir.
 // `options` es un array plano [{value, label, group?}]; `group` agrupa visualmente en el
 // desplegable (equivalente a los <optgroup> que tenía el <select> nativo).
-export function Autocomplete({ value, onChange, options, placeholder, emptyText = 'Sin resultados' }) {
+export function Autocomplete({ value, onChange, options, placeholder, emptyText }) {
+  const { t, lang } = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -78,7 +81,7 @@ export function Autocomplete({ value, onChange, options, placeholder, emptyText 
   // Con la caja vacía y algo ya elegido, se ofrece "quitar selección" para volver a vaciar el día.
   // Va aparte (no entra al ordenamiento alfabético) para quedar siempre arriba de todo.
   const showClear = !q && !!value;
-  const clearItem = { value: '', label: 'Quitar selección', clear: true };
+  const clearItem = { value: '', label: t('ui.clearSelection'), clear: true };
 
   // Se agrupa preservando el orden de aparición de cada grupo (ej. "⚡ Fáciles" antes que
   // "Otras"), pero las coincidencias dentro de cada grupo se ordenan alfabéticamente.
@@ -89,7 +92,7 @@ export function Autocomplete({ value, onChange, options, placeholder, emptyText 
     if (!bucket) { bucket = { name: g, items: [] }; groups.push(bucket); }
     bucket.items.push(o);
   }
-  groups.forEach((b) => b.items.sort((a, c) => a.label.localeCompare(c.label, 'es', { sensitivity: 'base' })));
+  groups.forEach((b) => b.items.sort((a, c) => a.label.localeCompare(c.label, lang, { sensitivity: 'base' })));
 
   const flat = [...(showClear ? [clearItem] : []), ...groups.flatMap((g) => g.items)];
 
@@ -122,7 +125,7 @@ export function Autocomplete({ value, onChange, options, placeholder, emptyText 
       <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
       {open && (
         <div className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-lg text-sm">
-          {flat.length === 0 && <div className="px-3 py-2 text-stone-400">{emptyText}</div>}
+          {flat.length === 0 && <div className="px-3 py-2 text-stone-400">{emptyText ?? t('ui.noResults')}</div>}
           {showClear && (
             <button
               type="button"
@@ -199,12 +202,13 @@ export function StarsDisplay({ value }) {
 }
 
 export function CopyBtn({ label, onClick, active }) {
+  const { t } = useT();
   return (
     <button
       onClick={onClick}
       className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium shadow-sm transition ${active ? 'bg-emerald-600 text-white' : 'bg-white text-stone-600 hover:bg-stone-100'}`}
     >
-      {active ? <Check size={16} /> : <Copy size={16} />} {active ? '¡Copiado!' : label}
+      {active ? <Check size={16} /> : <Copy size={16} />} {active ? t('ui.copied') : label}
     </button>
   );
 }
