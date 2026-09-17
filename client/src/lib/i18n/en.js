@@ -4,14 +4,17 @@ export default {
   'app.subtitle': 'Plan, build the list, and shop without a second thought.',
 
   // Login
-  'login.subtitle': 'Sign in to see your recipes and your plan.',
+  'login.subtitle': 'Plan your week and build your grocery list.',
   'login.continueGoogle': 'Continue with Google',
   'login.connectingSlow': 'Connecting… (may take a bit the first time)',
-  'login.useWithoutAccount': 'Use without an account',
+  'login.start': 'Get started',
+  'login.enterAndJoin': 'Enter and join',
   'login.connecting': 'Connecting…',
-  'login.guestNote': "As a guest, nothing is lost from this browser, but you won't see it on another device.",
-  'login.haveCode': 'Have a code to join a shared household?',
-  'login.pasteCode': 'Paste the code here',
+  'login.guestNote': 'You come in as a guest, no setup. You can link your Google account later from inside the app to see it on other devices too.',
+  'login.googleNote': "If you opened this from WhatsApp's browser, Google may refuse to sign you in here — use the button above.",
+  'login.invited': "You've been invited to a shared household. Come in and we'll ask whether you want to join and see the same recipe bank and plan.",
+  'login.haveCode': 'Have a code or a link to join a shared household?',
+  'login.pasteCode': 'Paste the code or link',
   'login.join': 'Join',
   'login.joining': '…',
   'login.joinNote': "You'll enter as a guest, already joined to that data — same limitation: it won't show on another device unless you paste the code again.",
@@ -219,12 +222,13 @@ export default {
 
   // Sharing
   'share.title': 'Share',
-  'share.codeLabel': 'Your code to share',
-  'share.codeHint': 'Whoever pastes it below with their own Google account will see and edit the same recipe bank and plan as you, from any device.',
+  'share.codeLabel': 'Your invite link',
+  'share.codeHint': 'Send it to whoever you want to invite. When they open it, the app asks whether they want to join — with a Google account or as a guest — and from then on they see and edit the same recipe bank and plan as you.',
   'share.copy': 'Copy',
+  'share.copyFailed': "Couldn't copy automatically — tap the link and copy it by hand.",
   'share.copied': 'Copied!',
-  'share.joinLabel': 'Join with a code',
-  'share.joinPlaceholder': 'Paste the code here',
+  'share.joinLabel': 'Join with a code or link',
+  'share.joinPlaceholder': 'Paste the code or link here',
   'share.join': 'Join',
   'share.ownCodeError': "That's your own code — no need to join it.",
   'share.leave': 'Leave shared household',
@@ -262,4 +266,9 @@ export default {
   'tour.skip': 'Skip',
   'tour.finish': 'Got it',
   'tour.reopenTitle': 'See the tutorial again',
+
+  // Invite link (/?hogar=…)
+  'invite.title': "You've been invited to a shared household",
+  'invite.message': "If you join, you'll see and edit the same recipe bank and plan as whoever invited you. Yours isn't deleted: it stays saved and comes back if you later leave the shared household.",
+  'invite.confirm': 'Join',
 };

@@ -24,6 +24,9 @@ export function LanguageProvider({ children }) {
 
   useEffect(() => {
     try { localStorage.setItem(LANG_KEY, lang); } catch { /* noop */ }
+    // index.html trae lang="es" fijo; acá se corrige al idioma real para lectores de pantalla
+    // y para que el navegador no ofrezca traducir una página que ya está en el idioma pedido.
+    document.documentElement.lang = lang;
   }, [lang]);
 
   const t = (key, vars) => {

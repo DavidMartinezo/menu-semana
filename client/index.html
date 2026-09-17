@@ -3,7 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Menú de la semana</title>
+    <title>Menú de la semana — planifica la comida y la lista del súper</title>
+    <meta name="description" content="Planifica tus comidas y organiza tu lista de compras: el menú de toda la semana en un minuto, y la lista del súper separada por tienda se hace sola." />
+    <meta name="theme-color" content="#065f46" />
+
+    <!-- Tarjeta de vista previa al compartir el link (WhatsApp, Telegram, iMessage). Sin esto,
+         el link se ve como una URL pelada — que es justo como llega la app a la mayoría. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Menú de la semana" />
+    <meta property="og:title" content="Menú de la semana" />
+    <meta property="og:description" content="Planifica tus comidas y organiza tu lista de compras: el menú de toda la semana en un minuto, y la lista del súper separada por tienda se hace sola." />
+    <meta property="og:locale" content="es_ES" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- ⚠️ APUNTA A LA BETA A PROPÓSITO (rama feature/cuentas, pruebas con la familia).
+         ANTES DE FUSIONAR A MAIN: cambiar las dos URLs de abajo a https://menu-semana-web.onrender.com
+         — igual que el sufijo "-beta" del render.yaml. Si esto llega a main sin cambiar, la tarjeta
+         de producción va a ir a buscar la imagen al servicio de pruebas.
+
+         La URL va absoluta porque los rastreadores de WhatsApp y compañía no resuelven rutas
+         relativas. La imagen es JPG de 1200x630 y ~90 KB: WhatsApp deja de traer la vista previa
+         cuando el archivo pesa de más (el PNG original, de 1.4 MB, no se mostraba). -->
+    <meta property="og:image" content="https://menu-semana-web-beta.onrender.com/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Menú de la semana: el plan de comidas de lunes a domingo junto a la lista de compras." />
+    <meta property="og:url" content="https://menu-semana-web-beta.onrender.com/" />
+
+    <!-- Favicon en línea (SVG como data URI): evita una petición extra y un archivo binario en
+         el repo. Es el mismo verde del header de la app. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23065f46'/%3E%3Cpath d='M11 7v8a2.5 2.5 0 0 0 2.5 2.5V25' stroke='%23fff' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3Cpath d='M9 7v5M13 7v5' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M21.5 7c-1.5 2-2 4-2 6.5s.8 3.5 2 3.5V25' stroke='%23fff' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E"
+    />
   </head>
   <body>
     <div id="root"></div>

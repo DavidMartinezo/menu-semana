@@ -4,6 +4,7 @@ import { joinHousehold } from '../lib/userStorage.js';
 import { track } from '../lib/analytics.js';
 import { useT } from '../lib/i18n/LanguageContext.jsx';
 import LanguageToggle from './LanguageToggle.jsx';
+import { hasInvite, parseInviteCode } from '../lib/invite.js';
 
 function useAuthErrorMapper() {
   const { t } = useT();
@@ -37,6 +38,9 @@ export default function Login() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [loadingJoin, setLoadingJoin] = useState(false);
+  // Se abrió con un link de invitación (/?hogar=…): App pregunta si unirse apenas entre, así
+  // que acá solo cambia el texto — no hay que pedirle ningún código a mano.
+  const invited = hasInvite();
   const busy = loading || loadingGuest || loadingJoin;
 
   const handleClick = async () => {
@@ -69,7 +73,7 @@ export default function Login() {
   // Entra como invitado (misma cuenta anónima temporal) y de una la une al hogar del código —
   // para alguien sin cuenta de Google que solo quiere ver/editar lo que ya comparte otra persona.
   const handleJoinWithCode = async () => {
-    const code = joinCode.trim();
+    const code = parseInviteCode(joinCode);
     if (!code) return;
     setError(null);
     setLoadingJoin(true);
@@ -90,24 +94,32 @@ export default function Login() {
         <LanguageToggle className="absolute top-4 right-4" />
         <h1 className="text-2xl font-bold text-emerald-800 tracking-tight">{t('app.title')}</h1>
         <p className="text-sm text-stone-500 mt-2 mb-6">{t('login.subtitle')}</p>
+        {invited && (
+          <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4 text-left">
+            {t('login.invited')}
+          </p>
+        )}
+
+        <button
+          onClick={handleGuest}
+          disabled={busy}
+          className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl shadow-sm"
+        >
+          {loadingGuest ? t('login.connecting') : invited ? t('login.enterAndJoin') : t('login.start')}
+        </button>
+        <p className="text-xs text-stone-400 mt-2">{t('login.guestNote')}</p>
+
         <button
           onClick={handleClick}
           disabled={busy}
-          className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-stone-50 disabled:opacity-50 text-stone-700 font-semibold py-3 rounded-xl shadow-sm border border-stone-200"
+          className="w-full mt-4 flex items-center justify-center gap-2.5 bg-white hover:bg-stone-50 disabled:opacity-50 text-stone-700 font-medium py-2.5 rounded-xl border border-stone-200"
         >
           {!loading && <GoogleIcon />}
           {loading ? t('login.connectingSlow') : t('login.continueGoogle')}
         </button>
-        <button
-          onClick={handleGuest}
-          disabled={busy}
-          className="w-full mt-3 bg-stone-100 hover:bg-stone-200 disabled:opacity-50 text-stone-600 font-medium py-2.5 rounded-xl"
-        >
-          {loadingGuest ? t('login.connecting') : t('login.useWithoutAccount')}
-        </button>
-        <p className="text-xs text-stone-400 mt-2">{t('login.guestNote')}</p>
+        <p className="text-xs text-stone-400 mt-2">{t('login.googleNote')}</p>
 
-        {!joinOpen ? (
+        {invited ? null : !joinOpen ? (
           <button onClick={() => setJoinOpen(true)} className="w-full mt-3 text-xs text-stone-400 hover:text-stone-600 underline">
             {t('login.haveCode')}
           </button>

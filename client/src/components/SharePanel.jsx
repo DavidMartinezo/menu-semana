@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Users } from 'lucide-react';
 import { useBackdropClose, useLockBodyScroll, CopyBtn } from './ui.jsx';
 import { useT } from '../lib/i18n/LanguageContext.jsx';
+import { buildInviteLink, parseInviteCode } from '../lib/invite.js';
 
 // Modal para compartir el banco de recetas/plan con otra cuenta de Google (ej. la esposa), o
 // unirse al hogar compartido de otra persona con su código. Ver lib/userStorage.js para el
@@ -10,19 +11,28 @@ export default function SharePanel({ householdId, isMember, onJoin, onLeave, onC
   const { t } = useT();
   const [code, setCode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const backdrop = useBackdropClose(onClose);
   useLockBodyScroll();
 
+  const inviteLink = buildInviteLink(householdId);
+
+  // Se copia el LINK, no el uid pelado: quien invita lo reenvía por WhatsApp y quien lo abre cae
+  // en la app con la pregunta de unirse ya hecha, sin trámite que explicar. El código suelto
+  // sigue sirviendo igual en la casilla de abajo, para quien ya lo tenga de antes.
   const copyCode = () => {
-    navigator.clipboard.writeText(householdId).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard.writeText(inviteLink).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => setCopyError(true) // algunos navegadores embebidos no dan permiso al portapapeles
+    );
   };
 
   const handleJoinClick = () => {
-    const trimmed = code.trim();
+    const trimmed = parseInviteCode(code);
     if (!trimmed) return;
     if (trimmed === householdId) {
       setJoinError(t('share.ownCodeError'));
@@ -48,9 +58,15 @@ export default function SharePanel({ householdId, isMember, onJoin, onLeave, onC
               {t('share.codeHint')}
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-white border border-stone-200 rounded-lg px-3 py-2.5 truncate">{householdId}</code>
+              <input
+                readOnly
+                value={inviteLink}
+                onFocus={(e) => e.target.select()}
+                className="flex-1 min-w-0 text-xs bg-white border border-stone-200 rounded-lg px-3 py-2.5 text-stone-600"
+              />
               <CopyBtn label={t('share.copy')} active={copied} onClick={copyCode} />
             </div>
+            {copyError && <p className="text-xs text-stone-500 mt-1.5">{t('share.copyFailed')}</p>}
           </div>
 
           <div className="border-t border-stone-200 pt-4">

@@ -4,6 +4,7 @@ import { storage } from './lib/storage.js';
 import { resolveHouseholdId, getHouseholdStorage, joinHousehold, leaveHousehold } from './lib/userStorage.js';
 import { signOutUser, signInWithGoogle, upgradeGuestToGoogle } from './lib/auth.js';
 import { track } from './lib/analytics.js';
+import { getInvite, clearInvite } from './lib/invite.js';
 import { SEED_MEALS, DAYS, EMPTY_WEEK, DEFAULT_STORES, storeMeta, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
 import { mondayOf } from './lib/dates.js';
 import SemanaTab from './components/SemanaTab.jsx';
@@ -17,6 +18,7 @@ import SharePanel from './components/SharePanel.jsx';
 import StoresPanel from './components/StoresPanel.jsx';
 import LanguageToggle from './components/LanguageToggle.jsx';
 import GuidedTour from './components/GuidedTour.jsx';
+import { ConfirmDialog } from './components/ui.jsx';
 import { useT } from './lib/i18n/LanguageContext.jsx';
 
 const STORE_KEY = 'planner-v1';
@@ -76,6 +78,11 @@ export default function App({ user }) {
 
   const [upgradeError, setUpgradeError] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  // Código de hogar que venía en el link (/?hogar=…), si lo había. Se pregunta antes de
+  // aplicarlo: unirse cambia a qué hogar apunta esta cuenta, y eso no se hace a espaldas de
+  // nadie. Ver lib/invite.js.
+  const [inviteCode, setInviteCode] = useState(() => getInvite());
+  const [inviteError, setInviteError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,10 +237,11 @@ export default function App({ user }) {
   const tourKey = TOUR_KEY_PREFIX + user.uid;
   useEffect(() => {
     if (meals === null) return;
+    if (inviteCode) return; // primero se resuelve la invitación del link, luego sale el tutorial
     let seen = true;
     try { seen = localStorage.getItem(tourKey) === '1'; } catch { /* noop */ }
     if (!seen) setTourOpen(true);
-  }, [meals, tourKey]);
+  }, [meals, tourKey, inviteCode]);
 
   const finishTour = () => {
     setTourOpen(false);
@@ -402,6 +410,33 @@ export default function App({ user }) {
     setMeals(null);
     setHouseholdId(user.uid);
   };
+
+  // --- Invitación que venía en el link (/?hogar=…) ---
+  // Aceptarla reusa handleJoin, exactamente el mismo camino que el panel de Compartir.
+  const acceptInvite = async () => {
+    setInviteError(null);
+    try {
+      await handleJoin(inviteCode);
+      setInviteCode(null);
+      clearInvite();
+      track('household_join', { via: 'link' });
+    } catch (e) {
+      // Se deja el diálogo abierto con el error: el caso típico es un código mal copiado.
+      setInviteError(e.message || String(e));
+    }
+  };
+  const dismissInvite = () => { setInviteCode(null); clearInvite(); };
+
+  // Una invitación que no lleva a ningún lado (es el propio código, o el hogar en el que esta
+  // cuenta ya está) se descarta sola y sin preguntar nada — si no, quedaría pendiente para
+  // siempre y bloquearía el tutorial de arriba.
+  useEffect(() => {
+    if (!inviteCode || !householdId) return;
+    if (inviteCode === householdId || inviteCode === user.uid) {
+      setInviteCode(null);
+      clearInvite();
+    }
+  }, [inviteCode, householdId, user.uid]);
 
   const handleUpgrade = async () => {
     setUpgradeError(null);
@@ -615,6 +650,17 @@ export default function App({ user }) {
           onJoin={handleJoin}
           onLeave={handleLeave}
           onClose={() => setShareOpen(false)}
+        />
+      )}
+
+      {inviteCode && householdId && inviteCode !== householdId && inviteCode !== user.uid && (
+        <ConfirmDialog
+          title={t('invite.title')}
+          message={inviteError ? `${t('invite.message')} — ${inviteError}` : t('invite.message')}
+          confirmLabel={t('invite.confirm')}
+          danger={false}
+          onConfirm={acceptInvite}
+          onCancel={dismissInvite}
         />
       )}
 

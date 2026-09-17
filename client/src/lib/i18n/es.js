@@ -5,14 +5,17 @@ export default {
   'app.subtitle': 'Planea, arma la lista y compra sin pensarlo dos veces.',
 
   // Login
-  'login.subtitle': 'Inicia sesión para ver tus recetas y tu plan.',
+  'login.subtitle': 'Arma el menú de tu semana y la lista del súper.',
   'login.continueGoogle': 'Continuar con Google',
   'login.connectingSlow': 'Conectando… (puede tardar un poco la primera vez)',
-  'login.useWithoutAccount': 'Usar sin cuenta',
+  'login.start': 'Empezar',
+  'login.enterAndJoin': 'Entrar y unirme',
   'login.connecting': 'Conectando…',
-  'login.guestNote': 'Como invitado nada se pierde en tu navegador, pero no lo ves desde otro dispositivo.',
-  'login.haveCode': '¿Tienes un código para unirte a un hogar compartido?',
-  'login.pasteCode': 'Pega el código aquí',
+  'login.guestNote': 'Entras como invitado, sin trámite. Desde la app puedes vincular tu cuenta de Google cuando quieras, para verlo también en otro dispositivo.',
+  'login.googleNote': 'Si abriste esto desde el navegador de WhatsApp, Google puede no dejarte entrar por aquí — usa el botón de arriba.',
+  'login.invited': 'Te invitaron a un hogar compartido. Entra y te preguntamos si quieres unirte para ver el mismo banco de recetas y el mismo plan.',
+  'login.haveCode': '¿Tienes un código o un link para unirte a un hogar compartido?',
+  'login.pasteCode': 'Pega el código o el link',
   'login.join': 'Unirme',
   'login.joining': '…',
   'login.joinNote': 'Entra como invitado, ya unido a esos datos — misma limitación: no se ve desde otro dispositivo sin volver a pegar el código.',
@@ -220,12 +223,13 @@ export default {
 
   // Compartir
   'share.title': 'Compartir',
-  'share.codeLabel': 'Tu código para compartir',
-  'share.codeHint': 'Quien lo pegue abajo con su propia cuenta de Google va a ver y editar el mismo banco de recetas y plan que tú, desde cualquier dispositivo.',
+  'share.codeLabel': 'Tu link para invitar',
+  'share.codeHint': 'Mándalo por WhatsApp a quien quieras invitar. Al abrirlo, la app le pregunta si quiere unirse — con cuenta de Google o como invitado — y desde ahí ve y edita el mismo banco de recetas y el mismo plan que tú.',
   'share.copy': 'Copiar',
+  'share.copyFailed': 'No se pudo copiar solo — toca el link y cópialo a mano.',
   'share.copied': '¡Copiado!',
-  'share.joinLabel': 'Unirme con un código',
-  'share.joinPlaceholder': 'Pega el código aquí',
+  'share.joinLabel': 'Unirme con un código o link',
+  'share.joinPlaceholder': 'Pega el código o el link aquí',
   'share.join': 'Unirme',
   'share.ownCodeError': 'Ese es tu propio código — no hace falta que te unas a él.',
   'share.leave': 'Salir del hogar compartido',
@@ -263,4 +267,9 @@ export default {
   'tour.skip': 'Saltar',
   'tour.finish': 'Entendido',
   'tour.reopenTitle': 'Ver el tutorial de nuevo',
+
+  // Invitación por link (/?hogar=…)
+  'invite.title': 'Te invitaron a un hogar compartido',
+  'invite.message': 'Si te unes, vas a ver y editar el mismo banco de recetas y el mismo plan que quien te invitó. Lo tuyo no se borra: queda guardado y vuelve si más adelante sales del hogar compartido.',
+  'invite.confirm': 'Unirme',
 };
