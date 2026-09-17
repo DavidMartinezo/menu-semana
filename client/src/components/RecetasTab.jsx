@@ -35,6 +35,7 @@ export default function RecetasTab({ meals, setMeals, setEditing, healthyOnly, s
   return (
     <div className="mt-4">
       <button
+        data-tour="add-recipe-btn"
         onClick={() => setEditing({ name: '', cat: 'Salvadoreño', easy: true, favorite: false, rating: 0, healthy: false, left: true, kcal: null, servings: null, types: ['cena'], steps: [], ing: [] })}
         className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 rounded-xl shadow-sm mb-4"
       >

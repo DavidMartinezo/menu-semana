@@ -7,8 +7,11 @@ const MARGIN = 16;     // separación mínima de la tarjeta con el borde de la p
 
 // Sigue la posición real de un elemento del DOM (por selector) mientras el paso esté activo —
 // se recalcula si la ventana cambia de tamaño o si algo hace scroll (útil en mobile, donde
-// rotar o abrir el teclado puede mover todo).
-function useTargetRect(selector) {
+// rotar o abrir el teclado puede mover todo). También depende de `tab`: cuando un paso fuerza
+// un cambio de pestaña (ver `onSetTab` más abajo), ese cambio tarda un render extra en llegar
+// desde App.jsx — sin `tab` en las dependencias, este hook buscaría el elemento antes de que
+// la pestaña nueva esté montada y se quedaría sin resaltar nada.
+function useTargetRect(selector, tab) {
   const [rect, setRect] = useState(null);
   useEffect(() => {
     if (!selector) { setRect(null); return; }
@@ -23,16 +26,18 @@ function useTargetRect(selector) {
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [selector]);
+  }, [selector, tab]);
   return rect;
 }
 
-// Recorrido corto (5 pasos) que resalta partes reales de la interfaz para quien nunca usó la
-// app — pensado para familiares que abren el link desde un chat, sin nadie al lado explicando.
-// El paso de "Compartir" se omite para invitados (ese botón no existe para ellos). No cambia de
-// pestaña: todos los elementos resaltados están siempre visibles, o el llamador ya garantiza
-// que la pestaña Semana esté activa antes de abrir el tour (ver App.jsx).
-export default function GuidedTour({ isAnonymous, onFinish }) {
+// Recorrido corto que resalta partes reales de la interfaz para quien nunca usó la app —
+// pensado para familiares que abren el link desde un chat, sin nadie al lado explicando. El
+// paso de "Compartir" se omite para invitados (ese botón no existe para ellos). La mayoría de
+// los pasos no necesitan cambiar de pestaña (la barra de pestañas y "Compartir" viven en el
+// header, siempre montados) — los dos que sí (Sorpréndeme en Semana, Agregar comida en Recetas)
+// declaran `tab`, y este componente llama `onSetTab` solo, restaurando la que corresponda tanto
+// al avanzar como al retroceder.
+export default function GuidedTour({ isAnonymous, tab, onSetTab, onFinish }) {
   const { t } = useT();
   useLockBodyScroll();
   const [stepIndex, setStepIndex] = useState(0);
@@ -40,14 +45,20 @@ export default function GuidedTour({ isAnonymous, onFinish }) {
   const steps = [
     { selector: null, title: t('tour.welcomeTitle', { app: t('app.title') }), body: t('tour.welcomeBody') },
     { selector: '[data-tour="tabs-nav"]', title: t('tour.tabsTitle'), body: t('tour.tabsBody') },
-    { selector: '[data-tour="wizard-btn"]', title: t('tour.wizardTitle'), body: t('tour.wizardBody') },
+    { selector: '[data-tour="wizard-btn"]', tab: 'semana', title: t('tour.wizardTitle'), body: t('tour.wizardBody') },
     ...(isAnonymous ? [] : [{ selector: '[data-tour="share-btn"]', title: t('tour.shareTitle'), body: t('tour.shareBody') }]),
+    { selector: '[data-tour="add-recipe-btn"]', tab: 'recetas', title: t('tour.addRecipeTitle'), body: t('tour.addRecipeBody') },
     { selector: null, title: t('tour.doneTitle'), body: t('tour.doneBody') },
   ];
 
   const step = steps[stepIndex];
   const isLast = stepIndex === steps.length - 1;
-  const rect = useTargetRect(step.selector);
+
+  useEffect(() => {
+    if (step.tab) onSetTab(step.tab);
+  }, [stepIndex]);
+
+  const rect = useTargetRect(step.selector, tab);
 
   const next = () => (isLast ? onFinish() : setStepIndex((i) => i + 1));
   const back = () => setStepIndex((i) => Math.max(0, i - 1));

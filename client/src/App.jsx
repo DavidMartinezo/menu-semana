@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, ShoppingCart, BookOpen, HelpCircle } from 'lucide-react';
+import { Calendar, ShoppingCart, BookOpen, HelpCircle, Store, Users, LogOut } from 'lucide-react';
 import { storage } from './lib/storage.js';
 import { resolveHouseholdId, getHouseholdStorage, joinHousehold, leaveHousehold } from './lib/userStorage.js';
 import { signOutUser, signInWithGoogle, upgradeGuestToGoogle } from './lib/auth.js';
@@ -496,22 +496,25 @@ export default function App({ user }) {
                 <span className="text-sm text-emerald-800 hidden sm:inline">{user.displayName}</span>
                 <button
                   onClick={() => setStoresOpen(true)}
-                  className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                  className="flex items-center gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                  title={t('header.stores')}
                 >
-                  {t('header.stores')}
+                  <Store size={16} /> <span className="hidden sm:inline">{t('header.stores')}</span>
                 </button>
                 <button
                   data-tour="share-btn"
                   onClick={() => setShareOpen(true)}
-                  className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                  className="flex items-center gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                  title={t('header.share')}
                 >
-                  {t('header.share')}
+                  <Users size={16} /> <span className="hidden sm:inline">{t('header.share')}</span>
                 </button>
                 <button
                   onClick={signOutUser}
-                  className="text-sm px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                  className="flex items-center gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded-lg border border-emerald-800/20 text-emerald-800 hover:bg-emerald-50"
+                  title={t('header.signOut')}
                 >
-                  {t('header.signOut')}
+                  <LogOut size={16} /> <span className="hidden sm:inline">{t('header.signOut')}</span>
                 </button>
               </>
             )}
@@ -615,7 +618,7 @@ export default function App({ user }) {
         />
       )}
 
-      {tourOpen && <GuidedTour isAnonymous={user.isAnonymous} onFinish={finishTour} />}
+      {tourOpen && <GuidedTour isAnonymous={user.isAnonymous} tab={tab} onSetTab={setTab} onFinish={finishTour} />}
     </div>
   );
 }

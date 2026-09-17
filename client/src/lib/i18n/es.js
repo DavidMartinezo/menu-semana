@@ -254,6 +254,8 @@ export default {
   'tour.wizardBody': 'Con este botón la app llena la semana sola, elige recetas por ti según qué días marques como ocupados.',
   'tour.shareTitle': 'Compartir con la familia',
   'tour.shareBody': 'Si alguien de tu familia ya usa la app, pídele su código y únete desde aquí — así ven las mismas recetas y el mismo plan, en vez de empezar cada uno de cero.',
+  'tour.addRecipeTitle': 'Agregar recetas con IA',
+  'tour.addRecipeBody': 'Toca "+ Agregar comida" y pega el link de una página web, de un video de YouTube, o el texto de una receta (por ejemplo, el caption de Instagram) — la IA saca los ingredientes, cantidades y pasos por ti.',
   'tour.doneTitle': '¡Listo!',
   'tour.doneBody': 'Eso es todo. Si quieres volver a ver este recorrido, usa el botón de ayuda (?) junto al selector de idioma.',
   'tour.next': 'Siguiente',

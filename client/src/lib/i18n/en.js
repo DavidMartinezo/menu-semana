@@ -253,6 +253,8 @@ export default {
   'tour.wizardBody': "This button fills the week for you automatically, picking recipes based on which days you mark as busy.",
   'tour.shareTitle': 'Share with family',
   'tour.shareBody': "If someone in your family already uses the app, ask them for their code and join from here — that way you both see the same recipes and plan, instead of starting from scratch each.",
+  'tour.addRecipeTitle': 'Add recipes with AI',
+  'tour.addRecipeBody': "Tap \"+ Add meal\" and paste a web page link, a YouTube link, or the recipe's text (like an Instagram caption) — the AI pulls out the ingredients, quantities, and steps for you.",
   'tour.doneTitle': "That's it!",
   'tour.doneBody': 'If you want to see this walkthrough again, use the help button (?) next to the language selector.',
   'tour.next': 'Next',
