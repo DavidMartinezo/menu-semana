@@ -379,7 +379,7 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
               value={steps.join('\n')}
               onChange={(e) => setSteps(e.target.value.split('\n'))}
               placeholder={t('recetas.stepsPlaceholder')}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm resize-none overflow-y-auto min-h-[7rem] max-h-[50vh]"
+              className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm resize-none overflow-y-auto overscroll-contain min-h-[7rem] max-h-[50vh]"
             />
           </div>
         </div>

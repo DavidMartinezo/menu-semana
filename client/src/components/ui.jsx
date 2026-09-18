@@ -18,11 +18,26 @@ export function useBackdropClose(onClose) {
 // Mientras un modal está abierto, bloquea el scroll de la página de atrás — sin esto, hacer
 // scroll dentro del modal hasta el tope o el fondo "encadena" el scroll hacia lo que queda
 // detrás (muy notorio en celular), y se ve como si la página de atrás también se moviera.
+//
+// El conteo es a propósito: hay modales anidados que bloquean los dos a la vez (PlanWizard y su
+// ConfirmDialog de "Reemplazar semana"). Si cada uno guardara y restaurara el valor por su
+// cuenta, al desmontarse juntos el último en limpiarse restauraría el 'hidden' que vio al
+// montarse, y la página quedaría sin scroll sin ningún modal abierto. Con un contador, solo el
+// último en soltar devuelve el valor original, sin importar en qué orden se desmonten.
+let lockCount = 0;
+let originalOverflow = '';
+
 export function useLockBodyScroll() {
   useEffect(() => {
-    const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = original; };
+    if (lockCount === 0) {
+      originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+    lockCount += 1;
+    return () => {
+      lockCount -= 1;
+      if (lockCount === 0) document.body.style.overflow = originalOverflow;
+    };
   }, []);
 }
 
@@ -124,7 +139,7 @@ export function Autocomplete({ value, onChange, options, placeholder, emptyText 
       />
       <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
       {open && (
-        <div className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-lg text-sm">
+        <div className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto overscroll-contain rounded-lg border border-stone-200 bg-white shadow-lg text-sm">
           {flat.length === 0 && <div className="px-3 py-2 text-stone-400">{emptyText ?? t('ui.noResults')}</div>}
           {showClear && (
             <button
