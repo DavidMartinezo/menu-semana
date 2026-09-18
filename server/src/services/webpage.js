@@ -4,8 +4,9 @@
 //   1) JSON-LD schema.org/Recipe: la mayoría de blogs de cocina lo incluyen para SEO
 //      (a veces anidado en un @graph, patrón común en plugins tipo WP Recipe Maker).
 //      Trae ingredientes y pasos ya estructurados: es la fuente más confiable.
-//   2) Si no hay Recipe en JSON-LD, se cae al texto visible de la página (título + body
-//      sin scripts/estilos), recortado para no pasarnos del límite de tokens del modelo.
+//   2) Si no hay Recipe en JSON-LD, se juntan las etiquetas Open Graph (og:title/og:description)
+//      con el texto visible de la página (título + body sin scripts/estilos).
+//   Todo recortado para no pasarnos del límite de tokens del modelo.
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import * as cheerio from 'cheerio';
@@ -103,6 +104,25 @@ function recipeToText(recipe) {
   return pieces.join('\n\n');
 }
 
+// Muchas páginas modernas se arman con JavaScript y no traen el contenido en el HTML — el caso
+// típico es Instagram, que sin sesión iniciada solo manda el muro de login (el texto visible
+// queda en "Log In / Sign Up / Meta / About…"). Pero casi todas llenan las etiquetas Open Graph
+// para que el link se vea bien al compartirlo, y ahí sí viene el texto del post con sus saltos
+// de línea. En un blog normal esto aporta apenas un resumen corto y el cuerpo sigue mandando,
+// así que se agregan siempre, sin tener que adivinar qué tipo de página es.
+function fromMetaTags($) {
+  const pick = (sel) => $(sel).attr('content')?.trim() || '';
+  const title = pick('meta[property="og:title"]') || pick('meta[name="twitter:title"]');
+  const description =
+    pick('meta[property="og:description"]') ||
+    pick('meta[name="twitter:description"]') ||
+    pick('meta[name="description"]');
+  const pieces = [];
+  if (title) pieces.push(`Título: ${title}`);
+  if (description) pieces.push(`Descripción: ${description}`);
+  return pieces.join('\n');
+}
+
 function fromVisibleText($) {
   $('script, style, noscript, svg, nav, footer, header, iframe').remove();
   const title = $('title').first().text().trim();
@@ -169,7 +189,10 @@ export async function getRecipeTextFromUrl(rawUrl, fetchImpl = fetch) {
   const $ = cheerio.load(html);
 
   const recipe = fromJsonLd($);
-  const text = (recipe ? recipeToText(recipe) : fromVisibleText($)).trim();
+  // Las meta van primero y se leen antes que fromVisibleText (que borra nodos del documento):
+  // así, si la página es enorme y hay que recortar por MAX_TEXT_CHARS, lo que se pierde es la
+  // cola del cuerpo y no la vista previa, que suele ser lo más concentrado.
+  const text = (recipe ? recipeToText(recipe) : [fromMetaTags($), fromVisibleText($)].filter(Boolean).join('\n\n')).trim();
 
   if (!text) {
     throw new Error('No encontré texto de receta en esa página.');
