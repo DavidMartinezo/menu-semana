@@ -134,6 +134,8 @@ export default {
   'lista.emptyHint': 'Choose dinners on the Week tab and the list ready for your stores shows up here.',
   'lista.copyByStore': 'Copy by store',
   'lista.copyByRecipe': 'Copy by recipe (Keep)',
+  'lista.searchPlaceholder': 'Search the list…',
+  'lista.noMatches': 'Nothing in the list matches.',
   'lista.addExtraHint': "Add something that's not in your recipes",
   'lista.addExtraPlaceholder': 'E.g. Toilet paper',
   'lista.markDone': 'Mark shopping as done',

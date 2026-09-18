@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ShoppingCart, Check, Plus, Trash2 } from 'lucide-react';
-import { DAYS, storeMeta } from '../data/seed.js';
-import { CopyBtn } from './ui.jsx';
+import { ShoppingCart, Check, Plus, Trash2, Search } from 'lucide-react';
+import { DAYS } from '../data/seed.js';
 import { useT } from '../lib/i18n/LanguageContext.jsx';
 
 // Recordatorio pasivo de "ya compraste esto" — no resta cantidades ni oculta nada, solo
@@ -28,7 +27,7 @@ export default function ListaTab({
   // Tiendas disponibles para un producto agregado a mano: las del hogar + la opción fija de
   // "cualquier tienda" (mismo id reservado `both` que ya usan los ingredientes de receta).
   const storeOptions = (stores) => [...stores, { id: 'both', label: t('recetas.anyStore') }];
-  const [copied, setCopied] = useState('');
+  const [q, setQ] = useState('');
   const [purchaseDone, setPurchaseDone] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [newItemStore, setNewItemStore] = useState(stores[0]?.id || 'both');
@@ -66,60 +65,22 @@ export default function ListaTab({
     setTimeout(() => setPurchaseDone(false), 1800);
   };
 
-  const copyText = async (text, label) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = text; document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); } catch { /* noop */ }
-      document.body.removeChild(ta);
-    }
-    setCopied(label);
-    setTimeout(() => setCopied(''), 1800);
-  };
+  // Buscar solo filtra lo que se ve: el registro de compra y el palomeado siguen trabajando
+  // sobre la lista completa, para que filtrar nunca se coma algo sin que te enteres.
+  const query = q.trim().toLowerCase();
+  const matches = (name, from = []) =>
+    !query || name.toLowerCase().includes(query) || from.some((f) => f.toLowerCase().includes(query));
 
-  const qtyPrefix = (x) => (x.hasQty ? `${x.qty}${x.unit ? ' ' + x.unit : ''} ` : '');
-
-  const byStoreText = () => {
-    let out = `${t('lista.header')}\n`;
-    for (const { id, label, items } of shopping.byStore) {
-      const extras = extraItems.filter((x) => x.store === id);
-      if (!items.length && !extras.length) continue;
-      out += `\n— ${label.toUpperCase()} —\n`;
-      items.forEach((x) => (out += `☐ ${qtyPrefix(x)}${x.item}\n`));
-      extras.forEach((x) => (out += `☐ ${x.name}\n`));
-    }
-    if (shopping.pantry.length) {
-      out += `\n— ${t('lista.pantryHeader')} —\n`;
-      shopping.pantry.forEach((x) => (out += `☐ ${x.item}\n`));
-    }
-    return out.trim();
-  };
-
-  const byRecipeText = () => {
-    let out = '';
-    const addMeal = (m) => {
-      if (!m) return;
-      out += `${m.name}\n`;
-      m.ing.forEach((g) => {
-        const qty = typeof g.qty === 'number' ? `${g.qty}${g.unit ? ' ' + g.unit : ''} ` : '';
-        out += `  • ${qty}${g.item} (${storeMeta(g.store, stores).label}${g.pantry ? `, ${t('lista.despensa').toLowerCase()}` : ''})\n`;
-      });
-      out += '\n';
-    };
-    for (const d of DAYS) {
-      addMeal(mealById[bfPlan[d.key]]);
-      // El almuerzo solo se lista si se eligió a mano (ver mismo criterio en shopping, App.jsx).
-      if (lunchPlan[d.key]) addMeal(mealById[lunchPlan[d.key]]);
-      addMeal(mealById[plan[d.key]]);
-    }
-    if (extraItems.length) {
-      out += `${t('lista.other')}\n`;
-      extraItems.forEach((x) => (out += `  • ${x.name} (${storeMeta(x.store, stores).label})\n`));
-    }
-    return out.trim();
-  };
+  // Se busca también por la receta de donde viene el ingrediente ("¿qué llevaba el pollo?"),
+  // que es justo lo que ya se muestra a la derecha de cada línea.
+  const groups = shopping.byStore
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((x) => matches(x.item, x.from)),
+      extras: extraItems.filter((x) => x.store === g.id && matches(x.name)),
+    }))
+    .filter((g) => g.items.length || g.extras.length);
+  const pantry = shopping.pantry.filter((x) => matches(x.item, x.from));
 
   if (!anyMeals && !extraItems.length) {
     return (
@@ -132,11 +93,6 @@ export default function ListaTab({
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex gap-2">
-        <CopyBtn label={t('lista.copyByStore')} active={copied === 'tienda'} onClick={() => copyText(byStoreText(), 'tienda')} />
-        <CopyBtn label={t('lista.copyByRecipe')} active={copied === 'receta'} onClick={() => copyText(byRecipeText(), 'receta')} />
-      </div>
-
       <div className="bg-white rounded-xl shadow-sm p-3">
         <p className="text-xs text-stone-500 mb-2">{t('lista.addExtraHint')}</p>
         <div className="flex gap-2">
@@ -172,9 +128,21 @@ export default function ListaTab({
         {purchaseDone ? <><Check size={16} /> {t('lista.markedDone')}</> : t('lista.markDone')}
       </button>
 
-      {shopping.byStore.map(({ id, label, cls, items }) => {
-        const extras = extraItems.filter((x) => x.store === id);
-        if (!items.length && !extras.length) return null;
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={t('lista.searchPlaceholder')}
+          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-200 bg-white text-sm"
+        />
+      </div>
+
+      {query && !groups.length && !pantry.length && (
+        <p className="text-center text-sm text-stone-400 py-4">{t('lista.noMatches')}</p>
+      )}
+
+      {groups.map(({ id, label, cls, items, extras }) => {
         return (
           <div key={id} className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className={`px-4 py-2.5 font-semibold text-sm ${cls}`}>{label} · {items.length + extras.length}</div>
@@ -220,11 +188,11 @@ export default function ListaTab({
         );
       })}
 
-      {shopping.pantry.length > 0 && (
+      {pantry.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 font-semibold text-sm bg-stone-100 text-stone-500">{t('lista.pantry')} · {shopping.pantry.length}</div>
+          <div className="px-4 py-2.5 font-semibold text-sm bg-stone-100 text-stone-500">{t('lista.pantry')} · {pantry.length}</div>
           <ul className="divide-y divide-stone-100">
-            {shopping.pantry.map((x) => {
+            {pantry.map((x) => {
               const on = checked[x.key];
               const reminder = !on && lastBoughtLabel(x.item, purchaseHistory, t);
               return (

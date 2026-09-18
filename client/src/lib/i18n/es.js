@@ -135,6 +135,8 @@ export default {
   'lista.emptyHint': 'Elige cenas en la pestaña Semana y aquí aparece la lista lista para tus tiendas.',
   'lista.copyByStore': 'Copiar por tienda',
   'lista.copyByRecipe': 'Copiar por receta (Keep)',
+  'lista.searchPlaceholder': 'Buscar en la lista…',
+  'lista.noMatches': 'No hay nada en la lista que coincida.',
   'lista.addExtraHint': 'Agregar algo que no esté en las recetas',
   'lista.addExtraPlaceholder': 'Ej. Papel higiénico',
   'lista.markDone': 'Marcar compra como hecha',
