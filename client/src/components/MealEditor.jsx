@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Plus, Trash2, Sparkles, Youtube, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import { Toggle, Stars, useBackdropClose, useLockBodyScroll } from './ui.jsx';
 import { extractFromText, importFromYoutube, importFromUrl, estimateKcal } from '../lib/api.js';
@@ -113,6 +113,17 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
   };
 
   const hasIngredients = ing.some((g) => g.item.trim());
+
+  // La caja de pasos crece con lo que se escribe en vez de quedarse en un alto fijo con scroll
+  // propio — escribir 8 pasos dentro de una ventanita de 4 líneas era lo más incómodo del
+  // formulario. El tope (max-h en las clases) evita que una receta larga empuje todo el modal.
+  const stepsRef = useRef(null);
+  useEffect(() => {
+    const el = stepsRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [steps]);
 
   const backdrop = useBackdropClose(onClose);
   useLockBodyScroll();
@@ -364,11 +375,11 @@ export default function MealEditor({ meal, categories = [], stores = [], ingredi
           <div>
             <label className="text-xs text-stone-500">{t('recetas.stepsLabel')}</label>
             <textarea
+              ref={stepsRef}
               value={steps.join('\n')}
               onChange={(e) => setSteps(e.target.value.split('\n'))}
-              rows={4}
               placeholder={t('recetas.stepsPlaceholder')}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm resize-none"
+              className="w-full mt-1 px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm resize-none overflow-y-auto min-h-[7rem] max-h-[50vh]"
             />
           </div>
         </div>
