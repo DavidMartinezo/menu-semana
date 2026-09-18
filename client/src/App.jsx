@@ -6,7 +6,7 @@ import { signOutUser, signInWithGoogle, upgradeGuestToGoogle } from './lib/auth.
 import { track } from './lib/analytics.js';
 import { getInvite, clearInvite } from './lib/invite.js';
 import { SEED_MEALS, DAYS, EMPTY_WEEK, DEFAULT_STORES, storeMeta, uid, withIds, normalizeMeal, breakfastNameToMeal } from './data/seed.js';
-import { mondayOf } from './lib/dates.js';
+import { mondayOf, addDays } from './lib/dates.js';
 import SemanaTab from './components/SemanaTab.jsx';
 import ListaTab from './components/ListaTab.jsx';
 import RecetasTab from './components/RecetasTab.jsx';
@@ -129,6 +129,32 @@ export default function App({ user }) {
 
   const deleteWeek = (key) =>
     setWeeks((prev) => { const next = { ...prev }; delete next[key]; return next; });
+
+  // Pasa una comida que no se cocinó a la semana siguiente: la quita del día de esta semana y
+  // la pone en el mismo día de la próxima, o en el primer día libre de ese tiempo de comida si
+  // ese día ya tiene algo. `slot` es 'plan' | 'bfPlan' | 'lunchPlan'. Devuelve la clave del día
+  // donde quedó (para poder avisar dónde), o null si la próxima semana ya está llena — en ese
+  // caso no mueve nada, para no perder la comida en el camino.
+  // El día destino se calcula acá afuera y no dentro del updater, para que el setWeeks quede
+  // puro (React puede llamar el updater más de una vez).
+  const moveToNextWeek = (slot, dayKey) => {
+    const mealId = currentWeek[slot]?.[dayKey];
+    if (!mealId) return null;
+    const nextKey = addDays(weekStart, 7);
+    const nextSlot = (weeks[nextKey] || EMPTY_WEEK)[slot] || {};
+    const target = !nextSlot[dayKey] ? dayKey : DAYS.find((d) => !nextSlot[d.key])?.key;
+    if (!target) return null;
+    setWeeks((prev) => {
+      const thisWeek = prev[weekStart] || EMPTY_WEEK;
+      const nextWeek = prev[nextKey] || EMPTY_WEEK;
+      return {
+        ...prev,
+        [weekStart]: { ...thisWeek, [slot]: { ...thisWeek[slot], [dayKey]: '' } },
+        [nextKey]: { ...nextWeek, [slot]: { ...nextWeek[slot], [target]: mealId } },
+      };
+    });
+    return target;
+  };
 
   // --- Cargar de Firestore (o sembrar la primera vez) ---
   useEffect(() => {
@@ -582,7 +608,7 @@ export default function App({ user }) {
           <SemanaTab {...{
             meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
             busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard: () => setWizardOpen(true),
-            openWeeksList: () => setWeeksListOpen(true), openView: setViewing,
+            openWeeksList: () => setWeeksListOpen(true), openView: setViewing, onMoveToNextWeek: moveToNextWeek,
           }} />
         )}
         {tab === 'lista' && <ListaTab {...{ shopping, checked, setChecked, plan, bfPlan, lunchPlan, mealById, stores, purchaseHistory, markPurchased, extraItems, addExtraItem, toggleExtraItem, removeExtraItem }} />}

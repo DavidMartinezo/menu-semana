@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Shuffle, Clock, Youtube, CalendarDays, CalendarPlus, Trash2, Eye } from 'lucide-react';
+import { Shuffle, Clock, Youtube, CalendarDays, CalendarPlus, Trash2, Eye, ChevronsRight } from 'lucide-react';
 import { DAYS } from '../data/seed.js';
 import { addDays, formatShort } from '../lib/dates.js';
 import { buildWeekICS, downloadICS } from '../lib/ics.js';
@@ -8,7 +8,7 @@ import { useT } from '../lib/i18n/LanguageContext.jsx';
 
 export default function SemanaTab({
   meals, plan, setPlan, bfPlan, setBfPlan, lunchPlan, setLunchPlan, lunchReuseAll, mealById, clearWeek,
-  busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList, openView,
+  busyDays, toggleBusyDay, weekStart, setWeekStart, openWizard, openWeeksList, openView, onMoveToNextWeek,
 }) {
   const { t, lang } = useT();
   const cenaCandidates = meals.filter((m) => m.types.includes('cena'));
@@ -18,6 +18,34 @@ export default function SemanaTab({
   const otherMeals = cenaCandidates.filter((m) => !m.easy);
   const [showAllDay, setShowAllDay] = useState({}); // day.key -> true si se saltó el filtro de "ocupado"
   const [confirmClear, setConfirmClear] = useState(false);
+  // Aviso pasajero de "lo pasé a tal día" bajo el desplegable recién movido: { id, targetDay }
+  // donde id es `${slot}:${dayKey}` y targetDay es null si la próxima semana ya estaba llena.
+  const [moved, setMoved] = useState(null);
+
+  const moveMeal = (slot, dayKey) => {
+    const targetDay = onMoveToNextWeek(slot, dayKey);
+    setMoved({ id: `${slot}:${dayKey}`, targetDay });
+    setTimeout(() => setMoved(null), 2500);
+  };
+
+  // Botón chico junto a "Ver receta", solo cuando ese tiempo de comida tiene algo elegido.
+  const MoveBtn = ({ slot, dayKey }) => (
+    <button
+      onClick={() => moveMeal(slot, dayKey)}
+      className="p-1 -my-1 text-stone-400 hover:text-emerald-700 rounded shrink-0"
+      title={t('semana.moveNextWeek')}
+    >
+      <ChevronsRight size={16} />
+    </button>
+  );
+
+  // El aviso se muestra bajo el desplegable del slot que se acaba de mover.
+  const MovedNote = ({ slot, dayKey }) =>
+    moved?.id === `${slot}:${dayKey}` ? (
+      <p className={`text-xs mt-1 ${moved.targetDay ? 'text-emerald-700' : 'text-amber-600'}`}>
+        {moved.targetDay ? t('semana.movedTo', { day: t(`days.${moved.targetDay}`) }) : t('semana.nextWeekFull')}
+      </p>
+    ) : null;
 
   const hasAnyPlan = DAYS.some((d) => plan[d.key] || bfPlan[d.key] || lunchPlan[d.key]);
 
@@ -140,7 +168,12 @@ export default function SemanaTab({
 
               <label className="flex items-center justify-between text-xs text-stone-400 mb-1">
                 {t('semana.breakfast')}
-                {bf && <button onClick={() => openView(bf)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> {t('semana.viewRecipe')}</button>}
+                {bf && (
+                  <span className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => openView(bf)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> {t('semana.viewRecipe')}</button>
+                    <MoveBtn slot="bfPlan" dayKey={d.key} />
+                  </span>
+                )}
               </label>
               <Autocomplete
                 value={bfPlan[d.key] || ''}
@@ -148,10 +181,16 @@ export default function SemanaTab({
                 placeholder={t('semana.chooseBreakfast')}
                 options={bfCandidates.map((m) => ({ value: m.id, label: m.name }))}
               />
+              <MovedNote slot="bfPlan" dayKey={d.key} />
 
               <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
                 <span>{t('semana.lunch')}{!lunchPlan[d.key] && showLeftover && <span className="text-emerald-700 font-normal normal-case">{t('semana.leftoverNote', { name: prevCena.name })}</span>}</span>
-                {lunch && <button onClick={() => openView(lunch)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case shrink-0"><Eye size={14} /> {t('semana.viewRecipe')}</button>}
+                {lunch && (
+                  <span className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => openView(lunch)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> {t('semana.viewRecipe')}</button>
+                    <MoveBtn slot="lunchPlan" dayKey={d.key} />
+                  </span>
+                )}
               </label>
               <Autocomplete
                 value={lunchPlan[d.key] || ''}
@@ -160,10 +199,16 @@ export default function SemanaTab({
                 options={lunchCandidates.map((m) => ({ value: m.id, label: m.name }))}
                 emptyText={t('semana.noLunchRecipes')}
               />
+              <MovedNote slot="lunchPlan" dayKey={d.key} />
 
               <label className="flex items-center justify-between text-xs text-stone-400 mt-3 mb-1">
                 {t('semana.dinner')}
-                {cena && <button onClick={() => openView(cena)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> {t('semana.viewRecipe')}</button>}
+                {cena && (
+                  <span className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => openView(cena)} className="flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-medium normal-case"><Eye size={14} /> {t('semana.viewRecipe')}</button>
+                    <MoveBtn slot="plan" dayKey={d.key} />
+                  </span>
+                )}
               </label>
               <Autocomplete
                 value={plan[d.key] || ''}
@@ -180,6 +225,7 @@ export default function SemanaTab({
                     : cenaCandidates.map((m) => ({ value: m.id, label: m.name }))
                 }
               />
+              <MovedNote slot="plan" dayKey={d.key} />
 
               {cena && (
                 <>
